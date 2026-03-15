@@ -185,11 +185,9 @@ const fragmentData = {
 };
 
 const grid = document.getElementById("warframeGrid");
-const introScreen = document.getElementById("introScreen");
 const homeUI = document.getElementById("homeUI");
 const pageTransition = document.getElementById("pageTransition");
 const buildPage = document.getElementById("buildPage");
-const introVideo = document.getElementById("introVideo");
 const bgMusic = document.getElementById("bgMusic");
 const musicToggle = document.getElementById("musicToggle");
 const volumeSlider = document.getElementById("volumeSlider");
@@ -201,6 +199,10 @@ let musicPlaying = false;
 /* ---------- MUSIQUE ---------- */
 
 function updateMusicButton() {
+  if (!bgMusic || !musicToggle) return;
+
+  musicPlaying = !bgMusic.paused;
+
   if (musicPlaying) {
     musicToggle.classList.remove("paused");
     musicToggle.classList.add("playing");
@@ -213,50 +215,48 @@ function updateMusicButton() {
 }
 
 async function playMusic() {
+  if (!bgMusic) return;
+
   try {
     await bgMusic.play();
-    musicPlaying = true;
   } catch (error) {
-    musicPlaying = false;
+    console.error("Erreur lecture audio :", error);
   }
+
   updateMusicButton();
 }
 
 function pauseMusic() {
+  if (!bgMusic) return;
   bgMusic.pause();
-  musicPlaying = false;
   updateMusicButton();
 }
 
 function toggleMusic() {
-  if (musicPlaying) {
-    pauseMusic();
+  if (!bgMusic) return;
+
+  if (bgMusic.paused) {
+    playMusic();
   } else {
-    playMusic();
+    pauseMusic();
   }
 }
 
-musicToggle.addEventListener("click", toggleMusic);
-
-function tryAutoplayMusicOnce() {
-  if (!musicPlaying) {
-    playMusic();
-  }
+if (musicToggle) {
+  musicToggle.addEventListener("click", toggleMusic);
 }
 
-window.addEventListener("load", () => {
-  tryAutoplayMusicOnce();
-});
-
-window.addEventListener("click", tryAutoplayMusicOnce, { once: true });
-window.addEventListener("touchstart", tryAutoplayMusicOnce, { once: true });
-window.addEventListener("keydown", tryAutoplayMusicOnce, { once: true });
-
-bgMusic.volume = (Number(volumeSlider.value) || 8) / 100;
-
-volumeSlider.addEventListener("input", () => {
+if (bgMusic && volumeSlider) {
   bgMusic.volume = Number(volumeSlider.value) / 100;
-});
+
+  volumeSlider.addEventListener("input", function () {
+    bgMusic.volume = Number(volumeSlider.value) / 100;
+  });
+
+  bgMusic.addEventListener("play", updateMusicButton);
+  bgMusic.addEventListener("pause", updateMusicButton);
+  bgMusic.addEventListener("ended", updateMusicButton);
+}
 
 updateMusicButton();
 
@@ -545,32 +545,5 @@ function closeBuild() {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && document.body.classList.contains("build-open")) {
     closeBuild();
-  }
-});
-
-/* ---------- INTRO ---------- */
-
-function endIntroAndRevealHome() {
-  introScreen.classList.add("hide");
-
-  setTimeout(() => {
-    homeUI.classList.remove("hidden-ui");
-    homeUI.classList.add("reveal");
-  }, 220);
-}
-
-window.addEventListener("load", () => {
-  if (introVideo) {
-    introVideo.addEventListener("ended", endIntroAndRevealHome, { once: true });
-
-    setTimeout(() => {
-      if (!introScreen.classList.contains("hide")) {
-        endIntroAndRevealHome();
-      }
-    }, 4500);
-  } else {
-    setTimeout(() => {
-      endIntroAndRevealHome();
-    }, 1600);
   }
 });
