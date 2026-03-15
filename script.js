@@ -137,7 +137,7 @@ const warframesData = [
         secondaire: { name: "Épitaphe Prime" },
         melee: { name: "Praedos" }
       },
-      companionMode: "text",
+      companionMode: "full",
       companionText: "Vous pouvez jouer n'importe quel compagnon",
       companion: {
         name: "Kubrow Huras",
