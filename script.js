@@ -212,14 +212,18 @@ function updateMusicButton() {
   }
 }
 
-function playMusic() {
-  if (!bgMusic) return;
+async function playMusic() {
+  if (!bgMusic) return false;
 
-  bgMusic.play().catch((error) => {
+  try {
+    await bgMusic.play();
+    updateMusicButton();
+    return true;
+  } catch (error) {
     console.error("Erreur lecture audio :", error);
-  });
-
-  updateMusicButton();
+    updateMusicButton();
+    return false;
+  }
 }
 
 function pauseMusic() {
@@ -229,11 +233,15 @@ function pauseMusic() {
   updateMusicButton();
 }
 
-function toggleMusic() {
+async function toggleMusic(event) {
+  if (event) {
+    event.stopPropagation();
+  }
+
   if (!bgMusic) return;
 
   if (bgMusic.paused) {
-    playMusic();
+    await playMusic();
   } else {
     pauseMusic();
   }
@@ -243,16 +251,34 @@ if (musicToggle) {
   musicToggle.addEventListener("click", toggleMusic);
 }
 
+/* ---------- DEMARRAGE AU PREMIER CLIC ---------- */
+
+async function startMusicOnce() {
+  if (!bgMusic) return;
+
+  if (!bgMusic.paused) return;
+
+  const started = await playMusic();
+
+  if (started) {
+    window.removeEventListener("click", startMusicOnce);
+    window.removeEventListener("keydown", startMusicOnce);
+    window.removeEventListener("touchstart", startMusicOnce);
+  }
+}
+
+window.addEventListener("click", startMusicOnce);
+window.addEventListener("keydown", startMusicOnce);
+window.addEventListener("touchstart", startMusicOnce);
+
 /* ---------- VOLUME ---------- */
 
 if (bgMusic && volumeSlider) {
-
   bgMusic.volume = Number(volumeSlider.value) / 100;
 
   volumeSlider.addEventListener("input", () => {
     bgMusic.volume = Number(volumeSlider.value) / 100;
   });
-
 }
 
 /* ---------- SYNCHRO BOUTON ---------- */
@@ -260,6 +286,7 @@ if (bgMusic && volumeSlider) {
 if (bgMusic) {
   bgMusic.addEventListener("play", updateMusicButton);
   bgMusic.addEventListener("pause", updateMusicButton);
+  bgMusic.addEventListener("ended", updateMusicButton);
 }
 
 updateMusicButton();
