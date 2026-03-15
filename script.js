@@ -77,7 +77,7 @@ function createBuildFor(name) {
 }
 
 const warframesData = [
- /* { name: "Ash Prime", builds: [createBuildFor("Ash Prime")] },
+  /* { name: "Ash Prime", builds: [createBuildFor("Ash Prime")] },
   { name: "Atlas Prime", builds: [createBuildFor("Atlas Prime")] },
   { name: "Banshee Prime", builds: [createBuildFor("Banshee Prime")] },
   { name: "Baruuk Prime", builds: [createBuildFor("Baruuk Prime")] },*/
@@ -194,9 +194,7 @@ const volumeSlider = document.getElementById("volumeSlider");
 const homeVideo = document.getElementById("homeBgVideo");
 const searchInput = document.getElementById("search");
 
-let musicPlaying = false;
-
-/* ---------- MUSIQUE ---------- */
+/* ---------- MUSIQUE MANUELLE UNIQUEMENT ---------- */
 
 function updateMusicButton() {
   if (!bgMusic || !musicToggle) return;
@@ -213,17 +211,15 @@ function updateMusicButton() {
 }
 
 async function playMusic() {
-  if (!bgMusic) return false;
+  if (!bgMusic) return;
 
   try {
     await bgMusic.play();
-    updateMusicButton();
-    return true;
   } catch (error) {
     console.error("Erreur lecture audio :", error);
-    updateMusicButton();
-    return false;
   }
+
+  updateMusicButton();
 }
 
 function pauseMusic() {
@@ -234,10 +230,7 @@ function pauseMusic() {
 }
 
 async function toggleMusic(event) {
-  if (event) {
-    event.stopPropagation();
-  }
-
+  if (event) event.stopPropagation();
   if (!bgMusic) return;
 
   if (bgMusic.paused) {
@@ -251,39 +244,13 @@ if (musicToggle) {
   musicToggle.addEventListener("click", toggleMusic);
 }
 
-/* ---------- DEMARRAGE AU PREMIER CLIC ---------- */
-
-async function startMusicOnce() {
-  if (!bgMusic) return;
-
-  if (!bgMusic.paused) return;
-
-  const started = await playMusic();
-
-  if (started) {
-    window.removeEventListener("click", startMusicOnce);
-    window.removeEventListener("keydown", startMusicOnce);
-    window.removeEventListener("touchstart", startMusicOnce);
-  }
-}
-
-window.addEventListener("click", startMusicOnce);
-window.addEventListener("keydown", startMusicOnce);
-window.addEventListener("touchstart", startMusicOnce);
-
-/* ---------- VOLUME ---------- */
-
 if (bgMusic && volumeSlider) {
   bgMusic.volume = Number(volumeSlider.value) / 100;
 
   volumeSlider.addEventListener("input", () => {
     bgMusic.volume = Number(volumeSlider.value) / 100;
   });
-}
 
-/* ---------- SYNCHRO BOUTON ---------- */
-
-if (bgMusic) {
   bgMusic.addEventListener("play", updateMusicButton);
   bgMusic.addEventListener("pause", updateMusicButton);
   bgMusic.addEventListener("ended", updateMusicButton);
