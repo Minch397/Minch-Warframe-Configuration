@@ -251,7 +251,7 @@ if (musicToggle) {
   musicToggle.addEventListener("click", toggleMusic);
 }
 
-/* ---------- DEMARRAGE AU PREMIER CLIC ---------- */
+/* ---------- DEMARRAGE AU PREMIER CONTACT ---------- */
 
 async function startMusicOnce() {
   if (!bgMusic) return;
@@ -261,15 +261,20 @@ async function startMusicOnce() {
   const started = await playMusic();
 
   if (started) {
-    window.removeEventListener("click", startMusicOnce);
-    window.removeEventListener("keydown", startMusicOnce);
-    window.removeEventListener("touchstart", startMusicOnce);
+    document.removeEventListener("pointerdown", startMusicOnce, true);
+    document.removeEventListener("keydown", startMusicOnce, true);
+    document.removeEventListener("touchstart", startMusicOnce, true);
+    document.removeEventListener("click", startMusicOnce, true);
   }
 }
 
-window.addEventListener("click", startMusicOnce);
-window.addEventListener("keydown", startMusicOnce);
-window.addEventListener("touchstart", startMusicOnce);
+/* le plus fiable */
+document.addEventListener("pointerdown", startMusicOnce, true);
+
+/* secours */
+document.addEventListener("click", startMusicOnce, true);
+document.addEventListener("touchstart", startMusicOnce, true);
+document.addEventListener("keydown", startMusicOnce, true);
 
 /* ---------- VOLUME ---------- */
 
