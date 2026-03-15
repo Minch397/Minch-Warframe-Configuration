@@ -27,6 +27,18 @@ function getWeaponBuildImage(warframeName, slot) {
   return `images/weapon_builds/${slugifyText(warframeName)}_${slot}_build.png`;
 }
 
+function getSpecialWeaponImage(warframeName, index) {
+  return `images/special_weapons/${slugifyText(warframeName)}_special_${index + 1}.png`;
+}
+
+function getSpecialWeaponBuildImage(warframeName, index) {
+  return `images/special_weapon_builds/${slugifyText(warframeName)}_special_${index + 1}_build.png`;
+}
+
+function getIncarnonImage(warframeName, slotKey, index) {
+  return `images/incarnons/${slugifyText(warframeName)}_${slotKey}_incarnon_${index + 1}.png`;
+}
+
 function getCompanionImage(warframeName) {
   return `images/companions/${slugifyText(warframeName)}_compagnon.png`;
 }
@@ -47,6 +59,13 @@ function getCompanionWeaponBuildImage(warframeName) {
   return `images/companion_builds/${slugifyText(warframeName)}_arme_compagnon_build.png`;
 }
 
+function createIncarnonSlots(warframeName, slotKey, count = 4) {
+  return Array.from({ length: count }, (_, index) => ({
+    image: getIncarnonImage(warframeName, slotKey, index),
+    text: "Texte incarnon"
+  }));
+}
+
 function createBuildFor(name) {
   return {
     name: `${name} Configuration`,
@@ -59,6 +78,26 @@ function createBuildFor(name) {
       { key: "topaze", tooltip: "Informations pour fragment d'archonte" },
       { key: "violet", tooltip: "Informations pour fragment d'archonte" }
     ],
+
+    /*
+      SPECIAL WEAPONS / EXALTÉES / PROPRES À LA WARFRAME
+      Mets 1, 2 ou 3 armes dans "items".
+      Tu peux rename chaque arme comme tu veux.
+    */
+    specialWeapons: {
+      enabled: false,
+      title: "Armes Exaltées / Propres à la Warframe",
+      items: [
+        /*
+        {
+          name: "Nom arme spéciale",
+          image: getSpecialWeaponImage(name, 0),
+          buildImage: getSpecialWeaponBuildImage(name, 0)
+        }
+        */
+      ]
+    },
+
     weaponMode: "full",
     weaponText: "Jouer n'importe quelle arme",
     weapons: {
@@ -66,6 +105,31 @@ function createBuildFor(name) {
       secondaire: { name: "Nom d'arme" },
       melee: { name: "Nom d'arme" }
     },
+
+    /*
+      INCARNONS
+      Pour chaque catégorie: enabled true/false
+      items = 4 ou 5 cases comme tu veux
+      Tu peux changer l'image et le texte de chaque case par warframe
+    */
+    incarnons: {
+      principale: {
+        enabled: false,
+        title: "Incarnon Principale",
+        items: createIncarnonSlots(name, "principale", 4)
+      },
+      secondaire: {
+        enabled: false,
+        title: "Incarnon Secondaire",
+        items: createIncarnonSlots(name, "secondaire", 4)
+      },
+      melee: {
+        enabled: false,
+        title: "Incarnon Mêlée",
+        items: createIncarnonSlots(name, "melee", 4)
+      }
+    },
+
     companionMode: "full",
     companionText: "Vous pouvez jouer n'importe quel compagnon",
     companion: {
@@ -77,10 +141,6 @@ function createBuildFor(name) {
 }
 
 const warframesData = [
-  /* { name: "Ash Prime", builds: [createBuildFor("Ash Prime")] },
-  { name: "Atlas Prime", builds: [createBuildFor("Atlas Prime")] },
-  { name: "Banshee Prime", builds: [createBuildFor("Banshee Prime")] },
-  { name: "Baruuk Prime", builds: [createBuildFor("Baruuk Prime")] },*/
   {
     name: "Caliban Prime",
     builds: [{
@@ -93,6 +153,19 @@ const warframesData = [
         { key: "tau_ecarlate", tooltip: "Fragment d'Archonte Écarlate Tauforgé | +15% de Puissance de Pouvoir" },
         { key: "tau_ecarlate", tooltip: "Fragment d'Archonte Écarlate Tauforgé | +15% de Puissance de Pouvoir" }
       ],
+
+      specialWeapons: {
+        enabled: true,
+        title: "Armes Exaltées / Propres à la Warframe",
+        items: [
+          {
+            name: "Arme spéciale 1",
+            image: getSpecialWeaponImage("Caliban Prime", 0),
+            buildImage: getSpecialWeaponBuildImage("Caliban Prime", 0)
+          }
+        ]
+      },
+
       weaponMode: "text",
       weaponText: "Jouer n'importe quelle arme",
       weapons: {
@@ -100,6 +173,30 @@ const warframesData = [
         secondaire: { name: "Nom d'arme" },
         melee: { name: "Nom d'arme" }
       },
+
+      incarnons: {
+        principale: {
+          enabled: true,
+          title: "Incarnon Principale",
+          items: [
+            { image: getIncarnonImage("Caliban Prime", "principale", 0), text: "Bonus 1" },
+            { image: getIncarnonImage("Caliban Prime", "principale", 1), text: "Bonus 2" },
+            { image: getIncarnonImage("Caliban Prime", "principale", 2), text: "Bonus 3" },
+            { image: getIncarnonImage("Caliban Prime", "principale", 3), text: "Bonus 4" }
+          ]
+        },
+        secondaire: {
+          enabled: false,
+          title: "Incarnon Secondaire",
+          items: []
+        },
+        melee: {
+          enabled: false,
+          title: "Incarnon Mêlée",
+          items: []
+        }
+      },
+
       companionMode: "full",
       companionText: "Vous pouvez jouer n'importe quel compagnon",
       companion: {
@@ -109,16 +206,8 @@ const warframesData = [
       }
     }]
   },
-  /* { name: "Chroma Prime", builds: [createBuildFor("Chroma Prime")] },
-  { name: "Citrine", builds: [createBuildFor("Citrine")] },
-  { name: "Cyte-09", builds: [createBuildFor("Cyte-09")] },
-  { name: "Dagath", builds: [createBuildFor("Dagath")] },
-  { name: "Dante", builds: [createBuildFor("Dante")] },
-  { name: "Ember Prime", builds: [createBuildFor("Ember Prime")] },
-  { name: "Equinox Prime", builds: [createBuildFor("Equinox Prime")] },
-  { name: "Excalibur Umbra", builds: [createBuildFor("Excalibur Umbra")] },
-  { name: "Frost Prime", builds: [createBuildFor("Frost Prime")] }, */
- {
+
+  {
     name: "Gara Prime",
     builds: [{
       name: "Gara Prime Configuration",
@@ -130,6 +219,24 @@ const warframesData = [
         { key: "tau_ambre", tooltip: "Fragment d'Archonte Ambre Tauforgé | +37,5% de Vitesse de Lancement" },
         { key: "tau_violet", tooltip: "Obtenez +37% de Dégâts Critiques de Mêlée. Lorsque l'Énergie max est supérieure à 500, le boost des Dégâts est doublé." }
       ],
+
+      specialWeapons: {
+        enabled: true,
+        title: "Armes Exaltées / Propres à la Warframe",
+        items: [
+          {
+            name: "Arme spéciale 1",
+            image: getSpecialWeaponImage("Gara Prime", 0),
+            buildImage: getSpecialWeaponBuildImage("Gara Prime", 0)
+          },
+          {
+            name: "Arme spéciale 2",
+            image: getSpecialWeaponImage("Gara Prime", 1),
+            buildImage: getSpecialWeaponBuildImage("Gara Prime", 1)
+          }
+        ]
+      },
+
       weaponMode: "full",
       weaponText: "Jouer n'importe quelle arme",
       weapons: {
@@ -137,15 +244,65 @@ const warframesData = [
         secondaire: { name: "Épitaphe Prime" },
         melee: { name: "Praedos" }
       },
+
+      incarnons: {
+        principale: {
+          enabled: true,
+          title: "Incarnon Principale",
+          items: [
+            { image: getIncarnonImage("Gara Prime", "principale", 0), text: "Effet 1" },
+            { image: getIncarnonImage("Gara Prime", "principale", 1), text: "Effet 2" },
+            { image: getIncarnonImage("Gara Prime", "principale", 2), text: "Effet 3" },
+            { image: getIncarnonImage("Gara Prime", "principale", 3), text: "Effet 4" },
+            { image: getIncarnonImage("Gara Prime", "principale", 4), text: "Effet 5" }
+          ]
+        },
+        secondaire: {
+          enabled: true,
+          title: "Incarnon Secondaire",
+          items: [
+            { image: getIncarnonImage("Gara Prime", "secondaire", 0), text: "Effet 1" },
+            { image: getIncarnonImage("Gara Prime", "secondaire", 1), text: "Effet 2" },
+            { image: getIncarnonImage("Gara Prime", "secondaire", 2), text: "Effet 3" },
+            { image: getIncarnonImage("Gara Prime", "secondaire", 3), text: "Effet 4" }
+          ]
+        },
+        melee: {
+          enabled: true,
+          title: "Incarnon Mêlée",
+          items: [
+            { image: getIncarnonImage("Gara Prime", "melee", 0), text: "Effet 1" },
+            { image: getIncarnonImage("Gara Prime", "melee", 1), text: "Effet 2" },
+            { image: getIncarnonImage("Gara Prime", "melee", 2), text: "Effet 3" },
+            { image: getIncarnonImage("Gara Prime", "melee", 3), text: "Effet 4" }
+          ]
+        }
+      },
+
       companionMode: "full",
       companionText: "Vous pouvez jouer n'importe quel compagnon",
       companion: {
         name: "Kubrow Huras",
         skinName: "Skin du compagnon",
         weaponName: "Griffes Huras"
-      } 
+      }
     }]
-  }, /*
+  }
+
+  /*
+  { name: "Ash Prime", builds: [createBuildFor("Ash Prime")] },
+  { name: "Atlas Prime", builds: [createBuildFor("Atlas Prime")] },
+  { name: "Banshee Prime", builds: [createBuildFor("Banshee Prime")] },
+  { name: "Baruuk Prime", builds: [createBuildFor("Baruuk Prime")] },
+  { name: "Chroma Prime", builds: [createBuildFor("Chroma Prime")] },
+  { name: "Citrine", builds: [createBuildFor("Citrine")] },
+  { name: "Cyte-09", builds: [createBuildFor("Cyte-09")] },
+  { name: "Dagath", builds: [createBuildFor("Dagath")] },
+  { name: "Dante", builds: [createBuildFor("Dante")] },
+  { name: "Ember Prime", builds: [createBuildFor("Ember Prime")] },
+  { name: "Equinox Prime", builds: [createBuildFor("Equinox Prime")] },
+  { name: "Excalibur Umbra", builds: [createBuildFor("Excalibur Umbra")] },
+  { name: "Frost Prime", builds: [createBuildFor("Frost Prime")] },
   { name: "Garuda Prime", builds: [createBuildFor("Garuda Prime")] },
   { name: "Gauss Prime", builds: [createBuildFor("Gauss Prime")] },
   { name: "Grendel Prime", builds: [createBuildFor("Grendel Prime")] },
@@ -193,7 +350,8 @@ const warframesData = [
   { name: "Wukong Prime", builds: [createBuildFor("Wukong Prime")] },
   { name: "Xaku Prime", builds: [createBuildFor("Xaku Prime")] },
   { name: "Yareli Prime", builds: [createBuildFor("Yareli Prime")] },
-  { name: "Zephyr Prime", builds: [createBuildFor("Zephyr Prime")] } */
+  { name: "Zephyr Prime", builds: [createBuildFor("Zephyr Prime")] }
+  */
 ];
 
 const fragmentData = {
@@ -379,6 +537,95 @@ function buildShardLine(fragmentEntries) {
     .join("");
 }
 
+/* ---------- ARMES SPÉCIALES / EXALTÉES ---------- */
+
+function normalizeSpecialWeapons(selectedBuild, warframeName) {
+  const specialWeapons = selectedBuild.specialWeapons || {};
+  const items = Array.isArray(specialWeapons.items) ? specialWeapons.items : [];
+
+  return {
+    enabled: Boolean(specialWeapons.enabled) && items.length > 0,
+    title: specialWeapons.title || "Armes Exaltées / Propres à la Warframe",
+    items: items.slice(0, 3).map((item, index) => ({
+      name: item.name || `Arme spéciale ${index + 1}`,
+      image: item.image || getSpecialWeaponImage(warframeName, index),
+      buildImage: item.buildImage || getSpecialWeaponBuildImage(warframeName, index)
+    }))
+  };
+}
+
+function renderSpecialWeaponsBlock(selectedBuild, warframeName) {
+  const specialWeapons = normalizeSpecialWeapons(selectedBuild, warframeName);
+
+  if (!specialWeapons.enabled) return "";
+
+  const rows = specialWeapons.items.map((weapon) => `
+    <div class="weapon-row">
+      <div class="weapon-left weapon-mini">
+        <h3>${weapon.name}</h3>
+        <img src="${weapon.image}" alt="${weapon.name}">
+      </div>
+      <div class="weapon-right weapon-build-big">
+        <h3>Configuration</h3>
+        <img src="${weapon.buildImage}" alt="Configuration ${weapon.name}">
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="weapon-section">
+      <h2>${specialWeapons.title}</h2>
+      ${rows}
+    </div>
+  `;
+}
+
+/* ---------- INCARNONS ---------- */
+
+function normalizeIncarnonItems(selectedBuild, warframeName, slotKey) {
+  const incarnonData = selectedBuild.incarnons?.[slotKey] || {};
+  const rawItems = Array.isArray(incarnonData.items) ? incarnonData.items : [];
+
+  return {
+    enabled: Boolean(incarnonData.enabled) && rawItems.length > 0,
+    title:
+      incarnonData.title ||
+      (slotKey === "principale"
+        ? "Incarnon Principale"
+        : slotKey === "secondaire"
+        ? "Incarnon Secondaire"
+        : "Incarnon Mêlée"),
+    items: rawItems.slice(0, 5).map((item, index) => ({
+      image: item.image || getIncarnonImage(warframeName, slotKey, index),
+      text: item.text || "Texte incarnon"
+    }))
+  };
+}
+
+function renderIncarnonBlock(selectedBuild, warframeName, slotKey) {
+  const incarnon = normalizeIncarnonItems(selectedBuild, warframeName, slotKey);
+
+  if (!incarnon.enabled) return "";
+
+  const itemsHTML = incarnon.items.map((item) => `
+    <div class="incarnon-item">
+      <div class="incarnon-icon-wrap">
+        <img src="${item.image}" alt="${item.text}">
+      </div>
+      <div class="incarnon-text">${item.text}</div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="incarnon-block">
+      <h4>${incarnon.title}</h4>
+      <div class="incarnon-row">
+        ${itemsHTML}
+      </div>
+    </div>
+  `;
+}
+
 /* ---------- ARMES ---------- */
 
 function getWeaponData(selectedBuild, slotKey, warframeName) {
@@ -390,20 +637,23 @@ function getWeaponData(selectedBuild, slotKey, warframeName) {
   };
 }
 
-function renderWeaponSection(title, weaponData) {
+function renderWeaponSection(title, weaponData, incarnonHTML = "") {
   return `
     <div class="weapon-section">
       <h2>${title}</h2>
-      <div class="weapon-layout">
-        <div class="weapon-left">
+
+      <div class="weapon-row">
+        <div class="weapon-left weapon-mini">
           <h3>${weaponData.name}</h3>
           <img src="${weaponData.image}" alt="${weaponData.name}">
         </div>
-        <div class="weapon-right">
+        <div class="weapon-right weapon-build-big">
           <h3>Configuration</h3>
           <img src="${weaponData.buildImage}" alt="Configuration ${weaponData.name}">
         </div>
       </div>
+
+      ${incarnonHTML}
     </div>
   `;
 }
@@ -424,10 +674,14 @@ function renderWeaponsBlock(selectedBuild, warframeName) {
   const secondaryWeapon = getWeaponData(selectedBuild, "secondaire", warframeName);
   const meleeWeapon = getWeaponData(selectedBuild, "melee", warframeName);
 
+  const primaryIncarnonHTML = renderIncarnonBlock(selectedBuild, warframeName, "principale");
+  const secondaryIncarnonHTML = renderIncarnonBlock(selectedBuild, warframeName, "secondaire");
+  const meleeIncarnonHTML = renderIncarnonBlock(selectedBuild, warframeName, "melee");
+
   return `
-    ${renderWeaponSection("Principale", primaryWeapon)}
-    ${renderWeaponSection("Secondaire", secondaryWeapon)}
-    ${renderWeaponSection("Mêlée", meleeWeapon)}
+    ${renderWeaponSection("Principale", primaryWeapon, primaryIncarnonHTML)}
+    ${renderWeaponSection("Secondaire", secondaryWeapon, secondaryIncarnonHTML)}
+    ${renderWeaponSection("Mêlée", meleeWeapon, meleeIncarnonHTML)}
   `;
 }
 
@@ -504,9 +758,23 @@ function fillBuildContent(w) {
   const selectedBuild = w.builds[0];
   const fashionImgSrc = getFashionImage(w.name);
   const buildImgSrc = getBuildImage(w.name);
+  const specialWeaponsHTML = renderSpecialWeaponsBlock(selectedBuild, w.name);
   const shardsHTML = buildShardLine(selectedBuild.fragments || []);
   const weaponsHTML = renderWeaponsBlock(selectedBuild, w.name);
   const companionHTML = renderCompanionBlock(selectedBuild, w.name);
+
+  const videoHTML = selectedBuild.video
+    ? `
+      <h2>Vidéo explicative</h2>
+      <div class="video">
+        <iframe
+          src="${selectedBuild.video}"
+          title="Vidéo explicative ${w.name}"
+          allowfullscreen
+        ></iframe>
+      </div>
+    `
+    : "";
 
   document.getElementById("buildContent").innerHTML = `
     <h2>Skin</h2>
@@ -515,6 +783,8 @@ function fillBuildContent(w) {
     <h2>${selectedBuild.name || `${w.name} Configuration`}</h2>
     <img src="${buildImgSrc}" alt="Configuration ${w.name}">
 
+    ${specialWeaponsHTML}
+
     <h2>Fragments d'Archonte</h2>
     <div class="shards-container">
       ${shardsHTML}
@@ -522,15 +792,7 @@ function fillBuildContent(w) {
 
     ${weaponsHTML}
     ${companionHTML}
-
-    <h2>Vidéo explicative</h2>
-    <div class="video">
-      <iframe
-        src="${selectedBuild.video}"
-        title="Vidéo explicative ${w.name}"
-        allowfullscreen
-      ></iframe>
-    </div>
+    ${videoHTML}
   `;
 }
 
