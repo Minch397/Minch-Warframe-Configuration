@@ -198,8 +198,6 @@ let musicPlaying = false;
 
 /* ---------- MUSIQUE ---------- */
 
-let musicStarted = false;
-
 function updateMusicButton() {
   if (!bgMusic || !musicToggle) return;
 
@@ -214,14 +212,18 @@ function updateMusicButton() {
   }
 }
 
-function playMusic() {
-  if (!bgMusic) return;
+async function playMusic() {
+  if (!bgMusic) return false;
 
-  bgMusic.play()
-    .then(() => {
-      updateMusicButton();
-    })
-    .catch(() => {});
+  try {
+    await bgMusic.play();
+    updateMusicButton();
+    return true;
+  } catch (error) {
+    console.error("Erreur lecture audio :", error);
+    updateMusicButton();
+    return false;
+  }
 }
 
 function pauseMusic() {
@@ -231,11 +233,15 @@ function pauseMusic() {
   updateMusicButton();
 }
 
-function toggleMusic() {
+async function toggleMusic(event) {
+  if (event) {
+    event.stopPropagation();
+  }
+
   if (!bgMusic) return;
 
   if (bgMusic.paused) {
-    playMusic();
+    await playMusic();
   } else {
     pauseMusic();
   }
@@ -247,34 +253,32 @@ if (musicToggle) {
 
 /* ---------- DEMARRAGE AU PREMIER CLIC ---------- */
 
-function startMusicOnce() {
-  if (musicStarted) return;
+async function startMusicOnce() {
+  if (!bgMusic) return;
 
-  musicStarted = true;
+  if (!bgMusic.paused) return;
 
-  if (bgMusic && bgMusic.paused) {
-    bgMusic.play()
-      .then(() => {
-        updateMusicButton();
-      })
-      .catch(() => {});
+  const started = await playMusic();
+
+  if (started) {
+    window.removeEventListener("click", startMusicOnce);
+    window.removeEventListener("keydown", startMusicOnce);
+    window.removeEventListener("touchstart", startMusicOnce);
   }
 }
 
-window.addEventListener("click", startMusicOnce, { once: true });
-window.addEventListener("keydown", startMusicOnce, { once: true });
-window.addEventListener("touchstart", startMusicOnce, { once: true });
+window.addEventListener("click", startMusicOnce);
+window.addEventListener("keydown", startMusicOnce);
+window.addEventListener("touchstart", startMusicOnce);
 
 /* ---------- VOLUME ---------- */
 
 if (bgMusic && volumeSlider) {
-
   bgMusic.volume = Number(volumeSlider.value) / 100;
 
   volumeSlider.addEventListener("input", () => {
     bgMusic.volume = Number(volumeSlider.value) / 100;
   });
-
 }
 
 /* ---------- SYNCHRO BOUTON ---------- */
