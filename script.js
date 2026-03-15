@@ -201,67 +201,25 @@ let musicPlaying = false;
 /* ---------- MUSIQUE ---------- */
 
 function updateMusicButton() {
-  if (!bgMusic || !musicToggle) return;
-
-  if (bgMusic.paused) {
-    musicToggle.classList.remove("playing");
-    musicToggle.classList.add("paused");
-    musicToggle.setAttribute("aria-label", "Lancer la musique");
-  } else {
+  if (musicPlaying) {
     musicToggle.classList.remove("paused");
     musicToggle.classList.add("playing");
     musicToggle.setAttribute("aria-label", "Mettre la musique en pause");
+  } else {
+    musicToggle.classList.remove("playing");
+    musicToggle.classList.add("paused");
+    musicToggle.setAttribute("aria-label", "Lancer la musique");
   }
 }
 
 async function playMusic() {
-  if (!bgMusic) return;
-
   try {
     await bgMusic.play();
+    musicPlaying = true;
   } catch (error) {
-    console.error("Erreur lecture audio :", error);
+    musicPlaying = false;
   }
-
   updateMusicButton();
-}
-
-function pauseMusic() {
-  if (!bgMusic) return;
-
-  bgMusic.pause();
-  updateMusicButton();
-}
-
-async function toggleMusic() {
-  if (!bgMusic) return;
-
-  if (bgMusic.paused) {
-    await playMusic();
-  } else {
-    pauseMusic();
-  }
-}
-
-if (musicToggle) {
-  musicToggle.addEventListener("click", toggleMusic);
-}
-
-if (bgMusic && volumeSlider) {
-
-  bgMusic.volume = Number(volumeSlider.value) / 100;
-
-  volumeSlider.addEventListener("input", () => {
-    bgMusic.volume = Number(volumeSlider.value) / 100;
-  });
-
-  bgMusic.addEventListener("play", updateMusicButton);
-  bgMusic.addEventListener("pause", updateMusicButton);
-  bgMusic.addEventListener("ended", updateMusicButton);
-
-}
-
-updateMusicButton();
 }
 
 function pauseMusic() {
