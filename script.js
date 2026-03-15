@@ -118,7 +118,33 @@ const warframesData = [
   { name: "Equinox Prime", builds: [createBuildFor("Equinox Prime")] },
   { name: "Excalibur Umbra", builds: [createBuildFor("Excalibur Umbra")] },
   { name: "Frost Prime", builds: [createBuildFor("Frost Prime")] },
-  { name: "Gara Prime", builds: [createBuildFor("Gara Prime")] },
+*/ {
+    name: "Gara Prime",
+    builds: [{
+      name: "Gara Prime Configuration",
+      video: "",
+      fragments: [
+        { key: "tau_violet", tooltip: "Obtenez +37% de Dégâts Critiques de Mêlée. Lorsque l'Énergie max est supérieure à 500, le boost des Dégâts est doublé." },
+        { key: "tau_ambre", tooltip: "Fragment d'Archonte Ambre Tauforgé | +37,5% de Vitesse de Lancement" },
+        { key: "tau_ambre", tooltip: "Fragment d'Archonte Ambre Tauforgé | +75% d'Efficacité des Orbes d'Énergie" },
+        { key: "tau_ambre", tooltip: "Fragment d'Archonte Ambre Tauforgé | +37,5% de Vitesse de Lancement" },
+        { key: "tau_violet", tooltip: "Obtenez +37% de Dégâts Critiques de Mêlée. Lorsque l'Énergie max est supérieure à 500, le boost des Dégâts est doublé." }
+      ],
+      weaponMode: "full",
+      weaponText: "Jouer n'importe quelle arme",
+      weapons: {
+        principale: { name: "Nataruk" },
+        secondaire: { name: "Épitaphe Prime" },
+        melee: { name: "Praedos" }
+      },
+      companionMode: "text",
+      companionText: "Vous pouvez jouer n'importe quel compagnon",
+      companion: {
+        name: "Kubrow Huras",
+        skinName: "Skin du compagnon",
+        weaponName: "Griffes Huras"
+      } /*
+    }]
   { name: "Garuda Prime", builds: [createBuildFor("Garuda Prime")] },
   { name: "Gauss Prime", builds: [createBuildFor("Gauss Prime")] },
   { name: "Grendel Prime", builds: [createBuildFor("Grendel Prime")] },
