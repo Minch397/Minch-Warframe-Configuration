@@ -117,8 +117,8 @@ const warframesData = [
   { name: "Ember Prime", builds: [createBuildFor("Ember Prime")] },
   { name: "Equinox Prime", builds: [createBuildFor("Equinox Prime")] },
   { name: "Excalibur Umbra", builds: [createBuildFor("Excalibur Umbra")] },
-  { name: "Frost Prime", builds: [createBuildFor("Frost Prime")] },
-*/ {
+  { name: "Frost Prime", builds: [createBuildFor("Frost Prime")] }, */
+ {
     name: "Gara Prime",
     builds: [{
       name: "Gara Prime Configuration",
@@ -143,8 +143,9 @@ const warframesData = [
         name: "Kubrow Huras",
         skinName: "Skin du compagnon",
         weaponName: "Griffes Huras"
-      } /*
+      } 
     }]
+  }, /*
   { name: "Garuda Prime", builds: [createBuildFor("Garuda Prime")] },
   { name: "Gauss Prime", builds: [createBuildFor("Gauss Prime")] },
   { name: "Grendel Prime", builds: [createBuildFor("Grendel Prime")] },
