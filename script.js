@@ -198,36 +198,35 @@ let musicPlaying = false;
 
 /* ---------- MUSIQUE ---------- */
 
+let musicStarted = false;
+
 function updateMusicButton() {
   if (!bgMusic || !musicToggle) return;
 
-  musicPlaying = !bgMusic.paused;
-
-  if (musicPlaying) {
-    musicToggle.classList.remove("paused");
-    musicToggle.classList.add("playing");
-    musicToggle.setAttribute("aria-label", "Mettre la musique en pause");
-  } else {
+  if (bgMusic.paused) {
     musicToggle.classList.remove("playing");
     musicToggle.classList.add("paused");
     musicToggle.setAttribute("aria-label", "Lancer la musique");
+  } else {
+    musicToggle.classList.remove("paused");
+    musicToggle.classList.add("playing");
+    musicToggle.setAttribute("aria-label", "Mettre la musique en pause");
   }
 }
 
-async function playMusic() {
+function playMusic() {
   if (!bgMusic) return;
 
-  try {
-    await bgMusic.play();
-  } catch (error) {
-    console.error("Erreur lecture audio :", error);
-  }
-
-  updateMusicButton();
+  bgMusic.play()
+    .then(() => {
+      updateMusicButton();
+    })
+    .catch(() => {});
 }
 
 function pauseMusic() {
   if (!bgMusic) return;
+
   bgMusic.pause();
   updateMusicButton();
 }
@@ -246,13 +245,41 @@ if (musicToggle) {
   musicToggle.addEventListener("click", toggleMusic);
 }
 
+/* ---------- DEMARRAGE AU PREMIER CLIC ---------- */
+
+function startMusicOnce() {
+  if (musicStarted) return;
+
+  musicStarted = true;
+
+  if (bgMusic && bgMusic.paused) {
+    bgMusic.play()
+      .then(() => {
+        updateMusicButton();
+      })
+      .catch(() => {});
+  }
+}
+
+window.addEventListener("click", startMusicOnce, { once: true });
+window.addEventListener("keydown", startMusicOnce, { once: true });
+window.addEventListener("touchstart", startMusicOnce, { once: true });
+
+/* ---------- VOLUME ---------- */
+
 if (bgMusic && volumeSlider) {
+
   bgMusic.volume = Number(volumeSlider.value) / 100;
 
-  volumeSlider.addEventListener("input", function () {
+  volumeSlider.addEventListener("input", () => {
     bgMusic.volume = Number(volumeSlider.value) / 100;
   });
 
+}
+
+/* ---------- SYNCHRO BOUTON ---------- */
+
+if (bgMusic) {
   bgMusic.addEventListener("play", updateMusicButton);
   bgMusic.addEventListener("pause", updateMusicButton);
   bgMusic.addEventListener("ended", updateMusicButton);
