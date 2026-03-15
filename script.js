@@ -155,7 +155,7 @@ const warframesData = [
       ],
 
       specialWeapons: {
-        enabled: true,
+        enabled: false,
         title: "Armes Exaltées / Propres à la Warframe",
         items: [
           {
@@ -176,7 +176,7 @@ const warframesData = [
 
       incarnons: {
         principale: {
-          enabled: true,
+          enabled: false,
           title: "Incarnon Principale",
           items: [
             { image: getIncarnonImage("Caliban Prime", "principale", 0), text: "Bonus 1" },
@@ -225,15 +225,10 @@ const warframesData = [
         title: "Armes Exaltées / Propres à la Warframe",
         items: [
           {
-            name: "Arme spéciale 1",
+            name: "Pique Cassante Prime",
             image: getSpecialWeaponImage("Gara Prime", 0),
             buildImage: getSpecialWeaponBuildImage("Gara Prime", 0)
           },
-          {
-            name: "Arme spéciale 2",
-            image: getSpecialWeaponImage("Gara Prime", 1),
-            buildImage: getSpecialWeaponBuildImage("Gara Prime", 1)
-          }
         ]
       },
 
@@ -247,7 +242,7 @@ const warframesData = [
 
       incarnons: {
         principale: {
-          enabled: true,
+          enabled: false,
           title: "Incarnon Principale",
           items: [
             { image: getIncarnonImage("Gara Prime", "principale", 0), text: "Effet 1" },
@@ -258,7 +253,7 @@ const warframesData = [
           ]
         },
         secondaire: {
-          enabled: true,
+          enabled: false,
           title: "Incarnon Secondaire",
           items: [
             { image: getIncarnonImage("Gara Prime", "secondaire", 0), text: "Effet 1" },
@@ -274,7 +269,8 @@ const warframesData = [
             { image: getIncarnonImage("Gara Prime", "melee", 0), text: "Effet 1" },
             { image: getIncarnonImage("Gara Prime", "melee", 1), text: "Effet 2" },
             { image: getIncarnonImage("Gara Prime", "melee", 2), text: "Effet 3" },
-            { image: getIncarnonImage("Gara Prime", "melee", 3), text: "Effet 4" }
+            { image: getIncarnonImage("Gara Prime", "melee", 3), text: "Effet 4" },
+            { image: getIncarnonImage("Gara Prime", "melee", 3), text: "Effet 5" }
           ]
         }
       },
