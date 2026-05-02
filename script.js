@@ -69,6 +69,7 @@ function createIncarnonSlots(warframeName, slotKey, count = 4) {
 function createBuildFor(name) {
   return {
     name: `${name} Configuration`,
+    infoText: "",
     video: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     fragments: [
       { key: "ecarlate", tooltip: "Informations pour fragment d'archonte" },
@@ -140,11 +141,12 @@ function createBuildFor(name) {
   };
 }
 
-const warframesData = [
+let warframesData = [
   {
     name: "Caliban Prime",
     builds: [{
       name: "Caliban Prime Configuration",
+      infoText: "",
       video: "https://www.youtube.com/embed/yWWbuNyPiwM",
       fragments: [
         { key: "tau_ambre", tooltip: "Fragment d'Archonte Ambre Tauforgé | +37,5% de Vitesse de Lancement" },
@@ -211,6 +213,7 @@ const warframesData = [
     name: "Gara Prime",
     builds: [{
       name: "Gara Prime Configuration",
+      infoText: "",
       video: "",
       fragments: [
         { key: "tau_violet", tooltip: "Obtenez +37% de Dégâts Critiques de Mêlée. Lorsque l'Énergie max est supérieure à 500, le boost des Dégâts est doublé." },
@@ -437,6 +440,13 @@ if (bgMusic && volumeSlider) {
   bgMusic.addEventListener("ended", updateMusicButton);
 }
 
+// La musique reste toujours manuelle : elle ne démarre jamais toute seule.
+if (bgMusic) {
+  bgMusic.autoplay = false;
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+}
+
 updateMusicButton();
 
 /* ---------- VIDEO READY ---------- */
@@ -476,6 +486,14 @@ function renderWarframes(list) {
   list.forEach((warframe) => {
     grid.appendChild(createWarframeCard(warframe));
   });
+
+  if (window.isAdminMode) {
+    const addCard = document.createElement("div");
+    addCard.className = "card admin-add-card";
+    addCard.innerHTML = `<div class="admin-plus">+</div><p>Ajouter une config</p>`;
+    addCard.addEventListener("click", () => openAdminEditor(null));
+    grid.appendChild(addCard);
+  }
 }
 
 function renderGrid() {
@@ -758,6 +776,14 @@ function fillBuildContent(w) {
   const shardsHTML = buildShardLine(selectedBuild.fragments || []);
   const weaponsHTML = renderWeaponsBlock(selectedBuild, w.name);
   const companionHTML = renderCompanionBlock(selectedBuild, w.name);
+  const configInfoHTML = selectedBuild.infoText
+    ? `
+      <div class="config-info-block">
+        <h2>Informations sur la configuration</h2>
+        <div class="config-info-text">${escapeHtml(selectedBuild.infoText)}</div>
+      </div>
+    `
+    : "";
 
   const videoHTML = selectedBuild.video
     ? `
@@ -788,16 +814,30 @@ function fillBuildContent(w) {
 
     ${weaponsHTML}
     ${companionHTML}
+    ${configInfoHTML}
     ${videoHTML}
   `;
+
+  if (window.isAdminMode) {
+    const adminBar = document.createElement("div");
+    adminBar.className = "admin-floating-bar";
+    adminBar.innerHTML = `
+      <button class="admin-primary" type="button" onclick="openAdminEditor(window.currentOpenWarframe)">Modifier la configuration</button>
+      <button class="admin-secondary" type="button" onclick="duplicateCurrentWarframe()">Dupliquer</button>
+      <button class="admin-danger" type="button" onclick="deleteCurrentWarframe()">Supprimer</button>
+    `;
+    document.getElementById("buildContent").prepend(adminBar);
+  }
 }
 
 function openBuild(w) {
+  window.currentOpenWarframe = w;
   pageTransition.classList.add("active");
 
   setTimeout(() => {
     document.body.classList.add("build-open");
     buildPage.style.display = "block";
+    buildPage.scrollTop = 0;
     fillBuildContent(w);
 
     setTimeout(() => {
@@ -826,7 +866,585 @@ function closeBuild() {
 /* ---------- RACCOURCIS CLAVIER ---------- */
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && document.body.classList.contains("build-open")) {
+  if (event.key !== "Escape") return;
+
+  const editorModal = document.getElementById("adminEditorModal");
+  if (editorModal && editorModal.classList.contains("open")) {
+    closeAdminEditor();
+    return;
+  }
+
+  const loginModal = document.getElementById("adminLoginModal");
+  if (loginModal && loginModal.classList.contains("open")) {
+    closeAdminLogin();
+    return;
+  }
+
+  if (document.body.classList.contains("build-open")) {
     closeBuild();
   }
 });
+
+
+
+/* ---------- FIREBASE EN LIGNE ----------
+  1) Crée ton projet Firebase
+  2) Active Firestore Database
+  3) Active Storage
+  4) Remplace les valeurs ci-dessous par ta config Firebase Web App
+  Tant que ces valeurs restent en COLLE_ICI, le site garde le mode local navigateur.
+*/
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAMtIwiKOeGrdZJPJCj57PoZ86z0vmzlxY",
+  authDomain: "warframe-projet.firebaseapp.com",
+  projectId: "warframe-projet",
+  storageBucket: "warframe-projet.firebasestorage.app",
+  messagingSenderId: "659242286736",
+  appId: "1:659242286736:web:838711fb0bc36345502215",
+  measurementId: "G-728P068J38"
+};
+
+const FIREBASE_DOC_PATH = "warframe_site/main";
+let firebaseReady = false;
+let firebaseDb = null;
+let firebaseStorage = null;
+
+function isFirebaseConfigFilled() {
+  return Boolean(
+    FIREBASE_CONFIG.apiKey &&
+    !String(FIREBASE_CONFIG.apiKey).includes("COLLE_ICI") &&
+    FIREBASE_CONFIG.projectId &&
+    !String(FIREBASE_CONFIG.projectId).includes("COLLE_ICI")
+  );
+}
+
+function initFirebaseOnline() {
+  if (!isFirebaseConfigFilled()) return false;
+  if (!window.firebase) {
+    console.warn("Firebase SDK non chargé. Le site reste en sauvegarde locale.");
+    return false;
+  }
+
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseDb = firebase.firestore();
+    firebaseStorage = firebase.storage();
+    firebaseReady = true;
+    return true;
+  } catch (error) {
+    console.error("Firebase impossible à initialiser :", error);
+    firebaseReady = false;
+    return false;
+  }
+}
+
+async function loadFirebaseWarframes() {
+  if (!firebaseReady || !firebaseDb) return false;
+  try {
+    const doc = await firebaseDb.doc(FIREBASE_DOC_PATH).get();
+    const data = doc.exists ? doc.data() : null;
+    if (data && Array.isArray(data.warframes)) {
+      warframesData = data.warframes;
+      localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
+      return true;
+    }
+  } catch (error) {
+    console.error("Lecture Firebase impossible :", error);
+  }
+  return false;
+}
+
+async function saveFirebaseWarframes() {
+  if (!firebaseReady || !firebaseDb) return false;
+  try {
+    await firebaseDb.doc(FIREBASE_DOC_PATH).set({
+      warframes: warframesData,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error("Sauvegarde Firebase impossible :", error);
+    return false;
+  }
+}
+
+function readFileAsDataUrl(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files[0]) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(input.files[0]);
+  });
+}
+
+async function uploadImageInput(inputId, folderName) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files[0]) return null;
+
+  const file = input.files[0];
+
+  if (!firebaseReady || !firebaseStorage) {
+    return await readFileAsDataUrl(inputId);
+  }
+
+  const safeName = `${Date.now()}_${slugifyText(file.name.replace(/\.[^.]+$/, ""))}.${(file.name.split(".").pop() || "png").toLowerCase()}`;
+  const ref = firebaseStorage.ref().child(`warframe-images/${folderName}/${safeName}`);
+  await ref.put(file, { contentType: file.type || "image/png" });
+  return await ref.getDownloadURL();
+}
+
+function getFirebaseStatusText() {
+  if (firebaseReady) return "Mode Firebase actif : tes modifications et images sont sauvegardées en ligne.";
+  return "Mode local : colle ta config Firebase dans script.js pour sauvegarder en ligne.";
+}
+
+/* ---------- ADMIN / ÉDITEUR LOCAL ---------- */
+const ADMIN_USERNAME = "MINCH";
+const ADMIN_PASSWORD = "MINCHELLA17";
+const ADMIN_SESSION_KEY = "minch_admin_logged";
+const ADMIN_DATA_KEY = "minch_warframes_data";
+
+window.isAdminMode = localStorage.getItem(ADMIN_SESSION_KEY) === "true";
+window.currentOpenWarframe = null;
+
+function deepClone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function loadAdminSavedData() {
+  const saved = localStorage.getItem(ADMIN_DATA_KEY);
+  if (!saved) return;
+  try {
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) warframesData = parsed;
+  } catch (error) {
+    console.error("Données admin illisibles", error);
+  }
+}
+
+async function loadExternalDataFile() {
+  if (localStorage.getItem(ADMIN_DATA_KEY)) return;
+
+  try {
+    const response = await fetch("warframes-data.json", { cache: "no-store" });
+    if (!response.ok) return;
+
+    const parsed = await response.json();
+    if (Array.isArray(parsed)) {
+      warframesData = parsed;
+      renderGrid();
+    }
+  } catch (error) {
+    // Aucun fichier warframes-data.json trouvé : le site garde les données du script.js.
+  }
+}
+
+function saveAdminData() {
+  localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
+  saveFirebaseWarframes().then((savedOnline) => {
+    const status = document.getElementById("adminSaveStatus");
+    if (status) {
+      status.textContent = savedOnline
+        ? "Sauvegardé en ligne sur Firebase."
+        : "Sauvegardé localement. Firebase n'est pas encore configuré ou a refusé la sauvegarde.";
+    }
+  });
+}
+
+function refreshAfterAdminChange() {
+  saveAdminData();
+  renderGrid();
+  if (window.currentOpenWarframe && document.body.classList.contains("build-open")) {
+    const fresh = warframesData.find(w => w.name === window.currentOpenWarframe.name) || warframesData[0];
+    window.currentOpenWarframe = fresh;
+    if (fresh) fillBuildContent(fresh);
+  }
+}
+
+function updateAdminButton() {
+  const btn = document.getElementById("adminButton");
+  if (!btn) return;
+  btn.textContent = window.isAdminMode ? "Admin ON" : "Admin";
+  btn.classList.toggle("admin-active", window.isAdminMode);
+}
+
+function openAdminLogin() {
+  const modal = document.getElementById("adminLoginModal");
+  if (!modal) return;
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.getElementById("adminLoginError").textContent = "";
+}
+
+function closeAdminLogin() {
+  const modal = document.getElementById("adminLoginModal");
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function tryAdminLogin() {
+  const user = document.getElementById("adminUser").value.trim();
+  const pass = document.getElementById("adminPass").value;
+  const error = document.getElementById("adminLoginError");
+
+  if (user === ADMIN_USERNAME && pass === ADMIN_PASSWORD) {
+    window.isAdminMode = true;
+    localStorage.setItem(ADMIN_SESSION_KEY, "true");
+    closeAdminLogin();
+    updateAdminButton();
+    renderGrid();
+    if (window.currentOpenWarframe && document.body.classList.contains("build-open")) fillBuildContent(window.currentOpenWarframe);
+  } else {
+    error.textContent = "Identifiant ou mot de passe incorrect.";
+  }
+}
+
+function logoutAdmin() {
+  window.isAdminMode = false;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  updateAdminButton();
+  renderGrid();
+  if (window.currentOpenWarframe && document.body.classList.contains("build-open")) fillBuildContent(window.currentOpenWarframe);
+}
+
+function fileToDataUrl(inputId, callback) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files[0]) {
+    callback(null);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => callback(reader.result);
+  reader.readAsDataURL(input.files[0]);
+}
+
+function getOrCreateBuild(warframe) {
+  if (!warframe.builds) warframe.builds = [{}];
+  if (!warframe.builds[0]) warframe.builds[0] = {};
+  return warframe.builds[0];
+}
+
+function normalizeYouTubeUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (value.includes("/embed/")) return value;
+  const watch = value.match(/[?&]v=([^&]+)/);
+  if (watch) return `https://www.youtube.com/embed/${watch[1]}`;
+  const short = value.match(/youtu\.be\/([^?&]+)/);
+  if (short) return `https://www.youtube.com/embed/${short[1]}`;
+  return value;
+}
+
+function fragmentsToText(fragments) {
+  return (fragments || []).map(f => `${f.key || "tau_ambre"}|${f.tooltip || ""}`).join("\n");
+}
+
+function textToFragments(text) {
+  return String(text || "")
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const [key, ...rest] = line.split("|");
+      return { key: (key || "tau_ambre").trim(), tooltip: rest.join("|").trim() };
+    });
+}
+
+function openAdminEditor(warframe) {
+  if (!window.isAdminMode) {
+    openAdminLogin();
+    return;
+  }
+
+  const isNew = !warframe;
+  const editingWarframe = isNew ? { name: "Nouvelle Warframe", builds: [createBuildFor("Nouvelle Warframe")] } : deepClone(warframe);
+  const build = getOrCreateBuild(editingWarframe);
+  const companion = build.companion || {};
+  const weapons = build.weapons || {};
+
+  const content = document.getElementById("adminEditorContent");
+  content.innerHTML = `
+    <h2>${isNew ? "Ajouter une config" : "Modifier la configuration"}</h2>
+    <p class="admin-hint">${getFirebaseStatusText()}</p>
+
+    <div class="admin-section">
+      <h3>Infos principales</h3>
+      <div class="admin-grid-form">
+        <label>Nom Warframe<input id="editWarframeName" class="admin-input" value="${escapeHtml(editingWarframe.name)}"></label>
+        <label>Titre configuration<input id="editBuildName" class="admin-input" value="${escapeHtml(build.name || editingWarframe.name + " Configuration")}"></label>
+      </div>
+      <label>Lien YouTube<input id="editVideo" class="admin-input" value="${escapeHtml(build.video || "")}" placeholder="https://www.youtube.com/watch?v=..."></label>
+      <label>Informations sur la configuration<textarea id="editInfoText" class="admin-textarea" placeholder="Explique ici comment jouer la config, pourquoi utiliser ce build, les astuces, etc.">${escapeHtml(build.infoText || "")}</textarea></label>
+      <div class="admin-grid-form">
+        <label>Image Warframe / carte<div class="admin-file-row"><input id="editCardImage" type="file" accept="image/*"></div></label>
+        <label>Image Skin<div class="admin-file-row"><input id="editFashionImage" type="file" accept="image/*"></div></label>
+        <label>Image Build Warframe<div class="admin-file-row"><input id="editBuildImage" type="file" accept="image/*"></div></label>
+      </div>
+      <p class="admin-small">Sans upload, le site garde les chemins automatiques comme images/warframes/nom.png.</p>
+    </div>
+
+    <div class="admin-section">
+      <h3>Fragments d'Archonte</h3>
+      <p class="admin-small">Une ligne par fragment : clé|texte. Exemples de clés : tau_ambre, tau_ecarlate, tau_violet, ambre, ecarlate, violet.</p>
+      <textarea id="editFragments" class="admin-textarea">${escapeHtml(fragmentsToText(build.fragments))}</textarea>
+    </div>
+
+    <div class="admin-section">
+      <h3>Armes</h3>
+      <label>Mode armes
+        <select id="editWeaponMode" class="admin-select">
+          <option value="full" ${build.weaponMode !== "text" ? "selected" : ""}>Images + builds</option>
+          <option value="text" ${build.weaponMode === "text" ? "selected" : ""}>Texte seulement</option>
+        </select>
+      </label>
+      <label>Texte armes<input id="editWeaponText" class="admin-input" value="${escapeHtml(build.weaponText || "Jouer n'importe quelle arme")}"></label>
+      ${["principale", "secondaire", "melee"].map(slot => `
+        <div class="admin-section">
+          <h4>${slot === "melee" ? "Mêlée" : slot.charAt(0).toUpperCase() + slot.slice(1)}</h4>
+          <label>Nom<input id="editWeaponName_${slot}" class="admin-input" value="${escapeHtml(weapons[slot]?.name || "")}"></label>
+          <div class="admin-grid-form">
+            <label>Image arme<div class="admin-file-row"><input id="editWeaponImage_${slot}" type="file" accept="image/*"></div></label>
+            <label>Image build arme<div class="admin-file-row"><input id="editWeaponBuild_${slot}" type="file" accept="image/*"></div></label>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+
+    <div class="admin-section">
+      <h3>Compagnon</h3>
+      <label>Mode compagnon
+        <select id="editCompanionMode" class="admin-select">
+          <option value="full" ${build.companionMode !== "text" ? "selected" : ""}>Images + builds</option>
+          <option value="text" ${build.companionMode === "text" ? "selected" : ""}>Texte seulement</option>
+        </select>
+      </label>
+      <label>Texte compagnon<input id="editCompanionText" class="admin-input" value="${escapeHtml(build.companionText || "Vous pouvez jouer n'importe quel compagnon")}"></label>
+      <div class="admin-grid-form">
+        <label>Nom compagnon<input id="editCompanionName" class="admin-input" value="${escapeHtml(companion.name || "")}"></label>
+        <label>Nom arme compagnon<input id="editCompanionWeaponName" class="admin-input" value="${escapeHtml(companion.weaponName || "")}"></label>
+        <label>Nom skin<input id="editCompanionSkinName" class="admin-input" value="${escapeHtml(companion.skinName || "")}"></label>
+      </div>
+      <div class="admin-grid-form">
+        <label>Image compagnon<div class="admin-file-row"><input id="editCompanionImage" type="file" accept="image/*"></div></label>
+        <label>Build compagnon<div class="admin-file-row"><input id="editCompanionBuildImage" type="file" accept="image/*"></div></label>
+        <label>Image arme compagnon<div class="admin-file-row"><input id="editCompanionWeaponImage" type="file" accept="image/*"></div></label>
+        <label>Build arme compagnon<div class="admin-file-row"><input id="editCompanionWeaponBuildImage" type="file" accept="image/*"></div></label>
+        <label>Image skin compagnon<div class="admin-file-row"><input id="editCompanionSkinImage" type="file" accept="image/*"></div></label>
+      </div>
+    </div>
+
+    <div class="admin-toolbar">
+      <button class="admin-primary" type="button" id="saveAdminEdit">Sauvegarder en ligne</button>
+      <button class="admin-secondary" type="button" onclick="exportAdminData()">Exporter backup JSON</button>
+      <button class="admin-secondary" type="button" onclick="resetAdminData()">Réinitialiser local</button>
+      <button class="admin-danger" type="button" onclick="logoutAdmin(); closeAdminEditor();">Déconnexion</button>
+    </div>
+    <div id="adminSaveStatus" class="admin-success"></div>
+  `;
+
+  document.getElementById("saveAdminEdit").onclick = () => saveAdminEditor(editingWarframe, isNew, warframe?.name);
+
+  const modal = document.getElementById("adminEditorModal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeAdminEditor() {
+  const modal = document.getElementById("adminEditorModal");
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function saveAdminEditor(editingWarframe, isNew, originalName) {
+  const saveButton = document.getElementById("saveAdminEdit");
+  const status = document.getElementById("adminSaveStatus");
+  if (saveButton) saveButton.disabled = true;
+  if (status) status.textContent = "Sauvegarde en cours...";
+
+  try {
+    const newName = document.getElementById("editWarframeName").value.trim() || "Nouvelle Warframe";
+    editingWarframe.name = newName;
+    const build = getOrCreateBuild(editingWarframe);
+
+    build.name = document.getElementById("editBuildName").value.trim() || `${newName} Configuration`;
+    build.video = normalizeYouTubeUrl(document.getElementById("editVideo").value);
+    build.infoText = document.getElementById("editInfoText").value.trim();
+    build.fragments = textToFragments(document.getElementById("editFragments").value);
+    build.weaponMode = document.getElementById("editWeaponMode").value;
+    build.weaponText = document.getElementById("editWeaponText").value.trim();
+    build.companionMode = document.getElementById("editCompanionMode").value;
+    build.companionText = document.getElementById("editCompanionText").value.trim();
+
+    if (!build.weapons) build.weapons = {};
+    ["principale", "secondaire", "melee"].forEach(slot => {
+      if (!build.weapons[slot]) build.weapons[slot] = {};
+      build.weapons[slot].name = document.getElementById(`editWeaponName_${slot}`).value.trim() || "Nom d'arme";
+    });
+
+    if (!build.companion) build.companion = {};
+    build.companion.name = document.getElementById("editCompanionName").value.trim() || "Nom du compagnon";
+    build.companion.weaponName = document.getElementById("editCompanionWeaponName").value.trim() || "Nom de l'arme du compagnon";
+    build.companion.skinName = document.getElementById("editCompanionSkinName").value.trim() || "Skin du compagnon";
+
+    const uploadJobs = [
+      ["editCardImage", "cards", data => editingWarframe.cardImage = data],
+      ["editFashionImage", "fashion", data => build.fashionImage = data],
+      ["editBuildImage", "builds", data => build.buildImage = data],
+      ["editCompanionImage", "companions", data => build.companion.image = data],
+      ["editCompanionBuildImage", "companions", data => build.companion.buildImage = data],
+      ["editCompanionWeaponImage", "companions", data => build.companion.weaponImage = data],
+      ["editCompanionWeaponBuildImage", "companions", data => build.companion.weaponBuildImage = data],
+      ["editCompanionSkinImage", "companions", data => build.companion.skinImage = data],
+      ...["principale", "secondaire", "melee"].flatMap(slot => [
+        [`editWeaponImage_${slot}`, `weapons/${slot}`, data => build.weapons[slot].image = data],
+        [`editWeaponBuild_${slot}`, `weapon-builds/${slot}`, data => build.weapons[slot].buildImage = data]
+      ])
+    ];
+
+    for (const [inputId, folder, apply] of uploadJobs) {
+      const url = await uploadImageInput(inputId, folder);
+      if (url) apply(url);
+    }
+
+    finishSaveAdminEditor(editingWarframe, isNew, originalName);
+  } catch (error) {
+    console.error(error);
+    if (status) status.textContent = "Erreur pendant la sauvegarde. Regarde la console du navigateur.";
+  } finally {
+    if (saveButton) saveButton.disabled = false;
+  }
+}
+
+function finishSaveAdminEditor(editingWarframe, isNew, originalName) {
+  if (isNew) {
+    warframesData.push(editingWarframe);
+  } else {
+    const index = warframesData.findIndex(w => w.name === originalName);
+    if (index >= 0) warframesData[index] = editingWarframe;
+  }
+  window.currentOpenWarframe = editingWarframe;
+  refreshAfterAdminChange();
+  const status = document.getElementById("adminSaveStatus");
+  if (status) status.textContent = firebaseReady ? "Sauvegarde envoyée sur Firebase..." : "Sauvegardé dans ce navigateur.";
+}
+
+function duplicateCurrentWarframe() {
+  if (!window.currentOpenWarframe) return;
+  const copy = deepClone(window.currentOpenWarframe);
+  copy.name = `${copy.name} Copie`;
+  if (copy.builds?.[0]) copy.builds[0].name = `${copy.name} Configuration`;
+  warframesData.push(copy);
+  window.currentOpenWarframe = copy;
+  refreshAfterAdminChange();
+}
+
+function deleteCurrentWarframe() {
+  if (!window.currentOpenWarframe) return;
+  const ok = confirm(`Supprimer ${window.currentOpenWarframe.name} ?`);
+  if (!ok) return;
+  warframesData = warframesData.filter(w => w.name !== window.currentOpenWarframe.name);
+  closeBuild();
+  window.currentOpenWarframe = null;
+  refreshAfterAdminChange();
+}
+
+function exportAdminData() {
+  const blob = new Blob([JSON.stringify(warframesData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "warframes-data.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function resetAdminData() {
+  const ok = confirm("Effacer les modifications sauvegardées dans ce navigateur ?");
+  if (!ok) return;
+  localStorage.removeItem(ADMIN_DATA_KEY);
+  location.reload();
+}
+
+/* Patch images personnalisées admin */
+const originalCreateWarframeCard = createWarframeCard;
+createWarframeCard = function(warframe) {
+  const card = originalCreateWarframeCard(warframe);
+  const img = card.querySelector("img");
+  if (img && warframe.cardImage) img.src = warframe.cardImage;
+  return card;
+};
+
+const originalFillBuildContent = fillBuildContent;
+fillBuildContent = function(w) {
+  originalFillBuildContent(w);
+  const build = w.builds?.[0] || {};
+  const images = document.querySelectorAll("#buildContent img");
+  if (build.fashionImage && images[0]) images[0].src = build.fashionImage;
+  if (build.buildImage && images[1]) images[1].src = build.buildImage;
+};
+
+async function initWarframeSiteData() {
+  initFirebaseOnline();
+
+  const loadedOnline = await loadFirebaseWarframes();
+  if (!loadedOnline) {
+    loadAdminSavedData();
+    await loadExternalDataFile();
+  }
+
+  updateAdminButton();
+  renderGrid();
+}
+
+initWarframeSiteData();
+
+const adminButton = document.getElementById("adminButton");
+if (adminButton) {
+  adminButton.addEventListener("click", () => {
+    if (window.isAdminMode) {
+      openAdminEditor(window.currentOpenWarframe || null);
+    } else {
+      openAdminLogin();
+    }
+  });
+}
+
+const adminLoginSubmit = document.getElementById("adminLoginSubmit");
+if (adminLoginSubmit) adminLoginSubmit.addEventListener("click", tryAdminLogin);
+
+const adminPasswordToggle = document.getElementById("adminPasswordToggle");
+if (adminPasswordToggle) {
+  adminPasswordToggle.addEventListener("click", () => {
+    const passInput = document.getElementById("adminPass");
+    if (!passInput) return;
+    const showPassword = passInput.type === "password";
+    passInput.type = showPassword ? "text" : "password";
+    adminPasswordToggle.classList.toggle("visible", showPassword);
+    adminPasswordToggle.setAttribute("aria-label", showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe");
+  });
+}
+
+["adminUser", "adminPass"].forEach(id => {
+  const input = document.getElementById(id);
+  if (input) input.addEventListener("keydown", event => {
+    if (event.key === "Enter") tryAdminLogin();
+  });
+});
+
+document.querySelectorAll("[data-admin-close]").forEach(btn => btn.addEventListener("click", closeAdminLogin));
+document.querySelectorAll("[data-editor-close]").forEach(btn => btn.addEventListener("click", closeAdminEditor));
