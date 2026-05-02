@@ -1,3 +1,35 @@
+// ==========================
+// FIREBASE IMPORT
+// ==========================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-storage.js";
+
+// ==========================
+// FIREBASE CONFIG
+// ==========================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAMtIwiKOeGrdZJPJCj57PoZ86z0vmzlxY",
+  authDomain: "warframe-projet.firebaseapp.com",
+  projectId: "warframe-projet",
+  storageBucket: "warframe-projet.firebasestorage.app",
+  messagingSenderId: "659242286736",
+  appId: "1:659242286736:web:838711fb0bc36345502215",
+  measurementId: "G-728P068J38"
+};
+
+// ==========================
+// INIT FIREBASE
+// ==========================
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+console.log("Firebase connecté !");
+
 function slugifyText(text) {
   return text
     .toLowerCase()
