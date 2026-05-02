@@ -1480,21 +1480,96 @@ if (adminPasswordToggle) {
 
 document.querySelectorAll("[data-admin-close]").forEach(btn => btn.addEventListener("click", closeAdminLogin));
 document.querySelectorAll("[data-editor-close]").forEach(btn => btn.addEventListener("click", closeAdminEditor));
-// ==========================
-// ADMIN BUTTON
-// ==========================
 
-window.addEventListener("DOMContentLoaded", () => {
-  const btn = document.createElement("button");
-  btn.textContent = "Admin";
-  btn.style.position = "fixed";
-  btn.style.top = "20px";
-  btn.style.right = "20px";
-  btn.style.zIndex = "9999";
 
-  btn.onclick = () => {
-    alert("Admin OK (Firebase connecté)");
+/* ---------- PATCH FINAL MINCH : compat GitHub/module + boutons fonctionnels ---------- */
+function showAdminConnectedState() {
+  const title = document.querySelector("#adminLoginModal .admin-login-card h2");
+  const hint = document.querySelector("#adminLoginModal .admin-hint");
+  const user = document.getElementById("adminUser");
+  const pass = document.getElementById("adminPass");
+  const eye = document.getElementById("adminPasswordToggle");
+  const submit = document.getElementById("adminLoginSubmit");
+  const error = document.getElementById("adminLoginError");
+
+  if (!title || !hint || !user || !pass || !submit) return;
+
+  if (window.isAdminMode) {
+    title.textContent = "Admin connecté";
+    hint.textContent = "Le mode éditeur est actif. Va sur une configuration pour la modifier, la dupliquer ou la supprimer.";
+    user.style.display = "none";
+    pass.style.display = "none";
+    if (eye) eye.style.display = "none";
+    submit.textContent = "Se déconnecter";
+    submit.onclick = () => {
+      logoutAdmin();
+      closeAdminLogin();
+    };
+    if (error) error.textContent = "";
+  } else {
+    title.textContent = "Connexion Admin";
+    hint.textContent = "Entre ton identifiant et ton mot de passe pour activer le mode éditeur.";
+    user.style.display = "block";
+    pass.style.display = "block";
+    if (eye) eye.style.display = "flex";
+    submit.textContent = "Se connecter";
+    submit.onclick = tryAdminLogin;
+    if (error) error.textContent = "";
+  }
+}
+
+const originalOpenAdminLoginFinal = openAdminLogin;
+openAdminLogin = function() {
+  originalOpenAdminLoginFinal();
+  showAdminConnectedState();
+  setTimeout(() => {
+    const firstInput = document.getElementById("adminUser");
+    if (firstInput && !window.isAdminMode) firstInput.focus();
+  }, 50);
+};
+
+function attachAdminFloatingButtons() {
+  const buildContent = document.getElementById("buildContent");
+  if (!buildContent) return;
+  const bar = buildContent.querySelector(".admin-floating-bar");
+  if (!bar) return;
+  const buttons = bar.querySelectorAll("button");
+  if (buttons[0]) buttons[0].onclick = () => openAdminEditor(window.currentOpenWarframe);
+  if (buttons[1]) buttons[1].onclick = duplicateCurrentWarframe;
+  if (buttons[2]) buttons[2].onclick = deleteCurrentWarframe;
+}
+
+const originalFillBuildContentFinal = fillBuildContent;
+fillBuildContent = function(w) {
+  originalFillBuildContentFinal(w);
+  attachAdminFloatingButtons();
+};
+
+const originalTryAdminLoginFinal = tryAdminLogin;
+tryAdminLogin = function() {
+  originalTryAdminLoginFinal();
+  showAdminConnectedState();
+};
+
+const finalAdminButton = document.getElementById("adminButton");
+if (finalAdminButton) {
+  finalAdminButton.onclick = (event) => {
+    event.preventDefault();
+    openAdminLogin();
   };
+}
 
-  document.body.appendChild(btn);
-});
+/* Les fonctions appelées depuis le HTML doivent être accessibles avec type="module". */
+window.filterWarframes = filterWarframes;
+window.openBuild = openBuild;
+window.closeBuild = closeBuild;
+window.openAdminLogin = openAdminLogin;
+window.closeAdminLogin = closeAdminLogin;
+window.tryAdminLogin = tryAdminLogin;
+window.logoutAdmin = logoutAdmin;
+window.openAdminEditor = openAdminEditor;
+window.closeAdminEditor = closeAdminEditor;
+window.duplicateCurrentWarframe = duplicateCurrentWarframe;
+window.deleteCurrentWarframe = deleteCurrentWarframe;
+window.exportAdminData = exportAdminData;
+window.resetAdminData = resetAdminData;
