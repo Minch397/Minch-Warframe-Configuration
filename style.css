@@ -1136,3 +1136,45 @@ body.build-open .admin-button{ opacity:1; visibility:visible; pointer-events:aut
   appearance:none;
   -webkit-appearance:none;
 }
+
+
+/* ---------- FIX FINAL MINCH ---------- */
+body > button:not(#adminButton){
+  display:none !important;
+}
+
+#adminButton.admin-button{
+  min-width:96px;
+  height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  white-space:nowrap;
+}
+
+.back,
+.admin-back{
+  position:fixed !important;
+  top:18px !important;
+  left:20px !important;
+  z-index:5000 !important;
+}
+
+.admin-modal-card{
+  padding-top:72px !important;
+}
+
+.admin-editor-card h2,
+.admin-login-card h2{
+  text-align:center !important;
+  margin-top:0 !important;
+}
+
+.admin-floating-bar button,
+.admin-toolbar button,
+.admin-primary,
+.admin-secondary,
+.admin-danger{
+  pointer-events:auto !important;
+}
