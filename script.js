@@ -1480,3 +1480,21 @@ if (adminPasswordToggle) {
 
 document.querySelectorAll("[data-admin-close]").forEach(btn => btn.addEventListener("click", closeAdminLogin));
 document.querySelectorAll("[data-editor-close]").forEach(btn => btn.addEventListener("click", closeAdminEditor));
+// ==========================
+// ADMIN BUTTON
+// ==========================
+
+window.addEventListener("DOMContentLoaded", () => {
+  const btn = document.createElement("button");
+  btn.textContent = "Admin";
+  btn.style.position = "fixed";
+  btn.style.top = "20px";
+  btn.style.right = "20px";
+  btn.style.zIndex = "9999";
+
+  btn.onclick = () => {
+    alert("Admin OK (Firebase connecté)");
+  };
+
+  document.body.appendChild(btn);
+});
