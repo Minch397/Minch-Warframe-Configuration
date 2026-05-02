@@ -1,35 +1,3 @@
-// ==========================
-// FIREBASE IMPORT
-// ==========================
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-storage.js";
-
-// ==========================
-// FIREBASE CONFIG
-// ==========================
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAMtIwiKOeGrdZJPJCj57PoZ86z0vmzlxY",
-  authDomain: "warframe-projet.firebaseapp.com",
-  projectId: "warframe-projet",
-  storageBucket: "warframe-projet.firebasestorage.app",
-  messagingSenderId: "659242286736",
-  appId: "1:659242286736:web:838711fb0bc36345502215",
-  measurementId: "G-728P068J38"
-};
-
-// ==========================
-// INIT FIREBASE
-// ==========================
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-console.log("Firebase connecté !");
-
 function slugifyText(text) {
   return text
     .toLowerCase()
@@ -854,9 +822,9 @@ function fillBuildContent(w) {
     const adminBar = document.createElement("div");
     adminBar.className = "admin-floating-bar";
     adminBar.innerHTML = `
-      <button class="admin-primary" type="button" onclick="openAdminEditor(window.currentOpenWarframe)">Modifier la configuration</button>
-      <button class="admin-secondary" type="button" onclick="duplicateCurrentWarframe()">Dupliquer</button>
-      <button class="admin-danger" type="button" onclick="deleteCurrentWarframe()">Supprimer</button>
+      <button class="admin-primary" type="button" data-admin-build-action="edit">Modifier la configuration</button>
+      <button class="admin-secondary" type="button" data-admin-build-action="duplicate">Dupliquer</button>
+      <button class="admin-danger" type="button" data-admin-build-action="delete">Supprimer</button>
     `;
     document.getElementById("buildContent").prepend(adminBar);
   }
@@ -1279,14 +1247,20 @@ function openAdminEditor(warframe) {
 
     <div class="admin-toolbar">
       <button class="admin-primary" type="button" id="saveAdminEdit">Sauvegarder en ligne</button>
-      <button class="admin-secondary" type="button" onclick="exportAdminData()">Exporter backup JSON</button>
-      <button class="admin-secondary" type="button" onclick="resetAdminData()">Réinitialiser local</button>
-      <button class="admin-danger" type="button" onclick="logoutAdmin(); closeAdminEditor();">Déconnexion</button>
+      <button class="admin-secondary" type="button" id="exportAdminEdit">Exporter backup JSON</button>
+      <button class="admin-secondary" type="button" id="resetAdminEdit">Réinitialiser local</button>
+      <button class="admin-danger" type="button" id="logoutAdminEdit">Déconnexion</button>
     </div>
     <div id="adminSaveStatus" class="admin-success"></div>
   `;
 
   document.getElementById("saveAdminEdit").onclick = () => saveAdminEditor(editingWarframe, isNew, warframe?.name);
+  const exportBtn = document.getElementById("exportAdminEdit");
+  if (exportBtn) exportBtn.onclick = exportAdminData;
+  const resetBtn = document.getElementById("resetAdminEdit");
+  if (resetBtn) resetBtn.onclick = resetAdminData;
+  const logoutBtn = document.getElementById("logoutAdminEdit");
+  if (logoutBtn) logoutBtn.onclick = () => { logoutAdmin(); closeAdminEditor(); };
 
   const modal = document.getElementById("adminEditorModal");
   modal.classList.add("open");
@@ -1531,12 +1505,29 @@ openAdminLogin = function() {
 function attachAdminFloatingButtons() {
   const buildContent = document.getElementById("buildContent");
   if (!buildContent) return;
-  const bar = buildContent.querySelector(".admin-floating-bar");
-  if (!bar) return;
-  const buttons = bar.querySelectorAll("button");
-  if (buttons[0]) buttons[0].onclick = () => openAdminEditor(window.currentOpenWarframe);
-  if (buttons[1]) buttons[1].onclick = duplicateCurrentWarframe;
-  if (buttons[2]) buttons[2].onclick = deleteCurrentWarframe;
+
+  const editBtn = buildContent.querySelector('[data-admin-build-action="edit"]');
+  const duplicateBtn = buildContent.querySelector('[data-admin-build-action="duplicate"]');
+  const deleteBtn = buildContent.querySelector('[data-admin-build-action="delete"]');
+
+  if (editBtn) editBtn.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!window.currentOpenWarframe) return;
+    openAdminEditor(window.currentOpenWarframe);
+  };
+
+  if (duplicateBtn) duplicateBtn.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    duplicateCurrentWarframe();
+  };
+
+  if (deleteBtn) deleteBtn.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteCurrentWarframe();
+  };
 }
 
 const originalFillBuildContentFinal = fillBuildContent;
@@ -1558,6 +1549,85 @@ if (finalAdminButton) {
     openAdminLogin();
   };
 }
+
+
+/* ---------- PATCH FINAL STABLE MINCH ---------- */
+function removeFakeAdminButtons() {
+  document.querySelectorAll('body > button').forEach((button) => {
+    if (button.id !== 'adminButton' && button.textContent.trim().toLowerCase() === 'admin') {
+      button.remove();
+    }
+  });
+}
+
+function bindStableNavigationButtons() {
+  const buildBack = document.querySelector('#buildPage .back');
+  if (buildBack) {
+    buildBack.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeBuild();
+    };
+  }
+
+  const loginBack = document.querySelector('#adminLoginModal .admin-back');
+  if (loginBack) {
+    loginBack.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAdminLogin();
+    };
+  }
+
+  const editorBack = document.querySelector('#adminEditorModal .admin-back');
+  if (editorBack) {
+    editorBack.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAdminEditor();
+    };
+  }
+
+  const adminBtn = document.getElementById('adminButton');
+  if (adminBtn) {
+    adminBtn.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openAdminLogin();
+    };
+  }
+}
+
+const stableOriginalOpenBuild = openBuild;
+openBuild = function(w) {
+  stableOriginalOpenBuild(w);
+  setTimeout(() => {
+    bindStableNavigationButtons();
+    attachAdminFloatingButtons();
+  }, 650);
+};
+
+const stableOriginalOpenAdminEditor = openAdminEditor;
+openAdminEditor = function(warframe) {
+  stableOriginalOpenAdminEditor(warframe);
+  setTimeout(() => {
+    bindStableNavigationButtons();
+    const modal = document.getElementById('adminEditorModal');
+    if (modal) modal.scrollTop = 0;
+  }, 0);
+};
+
+const stableOriginalOpenAdminLogin = openAdminLogin;
+openAdminLogin = function() {
+  stableOriginalOpenAdminLogin();
+  showAdminConnectedState();
+  setTimeout(bindStableNavigationButtons, 0);
+};
+
+removeFakeAdminButtons();
+bindStableNavigationButtons();
+setTimeout(removeFakeAdminButtons, 100);
+setTimeout(removeFakeAdminButtons, 1000);
 
 /* Les fonctions appelées depuis le HTML doivent être accessibles avec type="module". */
 window.filterWarframes = filterWarframes;
