@@ -1105,3 +1105,34 @@ body.build-open .admin-button{ opacity:1; visibility:visible; pointer-events:aut
   justify-content:center;
   margin:0 auto 24px auto;
 }
+
+
+/* ---------- PATCH FINAL MINCH : placements propres ---------- */
+.back,
+.admin-back{
+  position:fixed !important;
+  top:18px !important;
+  left:20px !important;
+  z-index:3800 !important;
+}
+
+.admin-modal-card{
+  padding-top:68px !important;
+}
+
+.admin-login-card h2,
+.admin-editor-card h2{
+  text-align:center !important;
+}
+
+.admin-floating-bar{
+  margin:0 auto 24px auto !important;
+  justify-content:center !important;
+}
+
+#adminButton.admin-button{
+  border:none;
+  outline:none;
+  appearance:none;
+  -webkit-appearance:none;
+}
