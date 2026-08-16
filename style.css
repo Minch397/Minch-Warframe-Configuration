@@ -3657,3 +3657,24 @@ body.minch-details-open{
 /* ---------- V23 : cartes dernières modifications plus hautes ---------- */
 .recent-update-card{min-height:150px;}
 @media(max-width:900px){.recent-update-card{min-height:120px;}}
+
+
+/* ---------- V23 : réglage admin réel des Dernières modifications ---------- */
+.recent-updates-section{position:relative;transition:width .22s ease,max-width .22s ease;}
+.recent-updates-section[data-recent-width="1"]{width:min(760px,92vw);}
+.recent-updates-section[data-recent-width="2"]{width:min(1080px,94vw);}
+.recent-updates-section[data-recent-width="3"]{width:min(1420px,96vw);}
+.recent-updates-section[data-recent-height="1"] .recent-update-card{min-height:140px;height:140px;}
+.recent-updates-section[data-recent-height="2"] .recent-update-card{min-height:240px;height:240px;}
+.recent-updates-section[data-recent-height="3"] .recent-update-card{min-height:360px;height:360px;}
+.recent-update-card{background-size:cover;background-position:center 32%;transition:height .22s ease,transform .18s ease,border-color .18s ease,box-shadow .18s ease;}
+.recent-update-card.has-image{background-color:#07101e;}
+.recent-updates-admin-btn{position:absolute;right:0;top:-2px;padding:7px 11px;border:1px solid rgba(125,211,252,.25);border-radius:10px;background:rgba(7,16,30,.82);color:rgba(255,255,255,.88);font:inherit;font-size:11px;cursor:pointer;z-index:3;}
+.recent-updates-admin-btn:hover{border-color:rgba(125,211,252,.55);background:rgba(10,25,45,.95);}
+@media(max-width:900px){
+  .recent-updates-section[data-recent-width]{width:min(94vw,760px);}
+  .recent-updates-section[data-recent-height="1"] .recent-update-card{min-height:130px;height:130px;}
+  .recent-updates-section[data-recent-height="2"] .recent-update-card{min-height:210px;height:210px;}
+  .recent-updates-section[data-recent-height="3"] .recent-update-card{min-height:300px;height:300px;}
+  .recent-updates-admin-btn{position:static;display:block;margin:0 auto 10px;}
+}

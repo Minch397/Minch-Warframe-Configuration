@@ -4523,6 +4523,7 @@ window.minchPreloadImage = minchPreloadImage;
     companions: [],
     elements: [],
     tierIntro: { text:"", size:16, align:"center" },
+    recentUpdatesStyle: { width:2, height:2 },
     tierCategories: [
       {id:"warframes",title:"Warframes",text:"",icon:"",image:"",overlay:28,width:1,height:1},
       {id:"primary",title:"Armes principales",text:"",icon:"",image:"",overlay:28,width:1,height:1},
@@ -4570,6 +4571,8 @@ window.minchPreloadImage = minchPreloadImage;
     base.elements = Array.isArray(raw.elements) ? raw.elements.map((x,i)=>({id:String(x?.id||`element_${Date.now()}_${i}`),title:String(x?.title||"Élément / Statut"),text:String(x?.text||""),image:String(x?.image||""),width:Math.min(3,Math.max(1,Number(x?.width)||1)),height:Math.min(3,Math.max(1,Number(x?.height)||1)),updatedAt:Number(x?.updatedAt)||0})) : [];
     const intro=raw.tierIntro&&typeof raw.tierIntro==="object"?raw.tierIntro:{};
     base.tierIntro={text:String(intro.text||""),size:Math.min(40,Math.max(10,Number(intro.size)||16)),align:["left","center","right"].includes(intro.align)?intro.align:"center"};
+    const recentStyle=raw.recentUpdatesStyle&&typeof raw.recentUpdatesStyle==="object"?raw.recentUpdatesStyle:{};
+    base.recentUpdatesStyle={width:Math.min(3,Math.max(1,Number(recentStyle.width)||2)),height:Math.min(3,Math.max(1,Number(recentStyle.height)||2))};
     if(Array.isArray(raw.tierCategories)&&raw.tierCategories.length) base.tierCategories=raw.tierCategories.map((x,i)=>({
       id:String(x?.id||`cat_${i}`), title:String(x?.title||`Catégorie ${i+1}`), text:String(x?.text||""), icon:String(x?.icon||""), image:String(x?.image||""),
       overlay:Math.min(80,Math.max(0,Number.isFinite(Number(x?.overlay))?Number(x.overlay):28)),
@@ -4695,7 +4698,7 @@ window.minchPreloadImage = minchPreloadImage;
 
   function collectRecentUpdates(){
     const out=[];
-    (window.warframesData||warframesData||[]).forEach(w=>{const t=Number(w?._updatedAt)||0;if(t)out.push({type:"warframe",id:String(w?._id||w?.name||""),title:String(w?.name||"Configuration Warframe"),updatedAt:t,image:(typeof getWarframeImage==="function"?getWarframeImage(w?.name):"")});});
+    (window.warframesData||warframesData||[]).forEach(w=>{const t=Number(w?._updatedAt)||0;if(t)out.push({type:"warframe",id:String(w?._id||w?.name||""),title:String(w?.name||"Configuration Warframe"),updatedAt:t,image:String(w?.cardImage||w?.image||(typeof getWarframeImage==="function"?getWarframeImage(w?.name):"")||"")});});
     (hubData.guides||[]).forEach(x=>{if(Number(x.updatedAt))out.push({type:"guides",id:x.id,title:x.title,updatedAt:Number(x.updatedAt),image:x.image||""});});
     (hubData.companions||[]).forEach(x=>{if(Number(x.updatedAt))out.push({type:"companions",id:x.id,title:x.title,updatedAt:Number(x.updatedAt),image:x.image||""});});
     (hubData.elements||[]).forEach(x=>{if(Number(x.updatedAt))out.push({type:"elements",id:x.id,title:x.title,updatedAt:Number(x.updatedAt),image:x.image||""});});
@@ -4718,11 +4721,60 @@ window.minchPreloadImage = minchPreloadImage;
     const selector=view==="weekly"?`#weeklyTasks [data-id="${CSS.escape(String(item.id))}"]`:`#${view}Grid [data-id="${CSS.escape(String(item.id))}"]`;
     setTimeout(()=>document.querySelector(selector)?.scrollIntoView({behavior:"smooth",block:"center"}),100);
   }
+  function openRecentUpdatesStyleEditor(){
+    const d=hubData.recentUpdatesStyle||{width:2,height:2};
+    const {overlay,close,save}=editorShell("Taille des dernières modifications",`
+      <div class="hub-editor-hint">Les niveaux changent réellement la taille des 3 cartes sur l’accueil.</div>
+      <div class="hub-editor-size-row">
+        <label>Largeur des cartes
+          <select id="recentUpdatesWidth" class="admin-input">
+            <option value="1" ${Number(d.width)===1?"selected":""}>1 — Compacte</option>
+            <option value="2" ${Number(d.width)===2?"selected":""}>2 — Grande</option>
+            <option value="3" ${Number(d.width)===3?"selected":""}>3 — Très grande</option>
+          </select>
+        </label>
+        <label>Hauteur des cartes
+          <select id="recentUpdatesHeight" class="admin-input">
+            <option value="1" ${Number(d.height)===1?"selected":""}>1 — 140 px</option>
+            <option value="2" ${Number(d.height)===2?"selected":""}>2 — 240 px</option>
+            <option value="3" ${Number(d.height)===3?"selected":""}>3 — 360 px</option>
+          </select>
+        </label>
+      </div>`,"Appliquer");
+    save.onclick=async()=>{
+      hubData.recentUpdatesStyle={
+        width:Math.min(3,Math.max(1,Number(overlay.querySelector("#recentUpdatesWidth")?.value)||2)),
+        height:Math.min(3,Math.max(1,Number(overlay.querySelector("#recentUpdatesHeight")?.value)||2))
+      };
+      await saveHub();close();
+    };
+  }
+
   function renderRecentUpdates(){
     const root=document.getElementById("recentUpdatesGrid");if(!root)return;
+    const section=root.closest(".recent-updates-section");
+    const style=hubData.recentUpdatesStyle||{width:2,height:2};
+    if(section){
+      section.dataset.recentWidth=String(Math.min(3,Math.max(1,Number(style.width)||2)));
+      section.dataset.recentHeight=String(Math.min(3,Math.max(1,Number(style.height)||2)));
+      section.querySelector("[data-edit-recent-style]")?.remove();
+      if(window.isAdminMode){
+        const edit=document.createElement("button");
+        edit.type="button";edit.className="recent-updates-admin-btn";edit.dataset.editRecentStyle="1";edit.textContent="Modifier la taille";
+        edit.addEventListener("click",openRecentUpdatesStyleEditor);
+        section.appendChild(edit);
+      }
+    }
     const items=collectRecentUpdates();
     root.innerHTML=items.length?items.map((x,i)=>`<button class="recent-update-card" type="button" data-recent-index="${i}"><span class="recent-update-kicker">Dernière modification</span><strong>${esc(x.title)}</strong><span>Modifié le ${esc(formatModifiedDate(x.updatedAt))}</span></button>`).join(""):`<div class="recent-update-empty">Les trois dernières modifications apparaîtront ici.</div>`;
-    root.querySelectorAll("[data-recent-index]").forEach(b=>{const x=items[Number(b.dataset.recentIndex)];if(x?.image)b.style.backgroundImage=`linear-gradient(145deg,rgba(5,15,29,.28),rgba(18,10,34,.48)),url("${String(x.image).replace(/"/g,"%22")}")`;b.addEventListener("click",()=>openRecentUpdate(x));});
+    root.querySelectorAll("[data-recent-index]").forEach(b=>{
+      const x=items[Number(b.dataset.recentIndex)];
+      if(x?.image){
+        b.style.backgroundImage=`linear-gradient(145deg,rgba(5,15,29,.24),rgba(18,10,34,.42)),url("${String(x.image).replace(/"/g,"%22")}")`;
+        b.classList.add("has-image");
+      }
+      b.addEventListener("click",()=>openRecentUpdate(x));
+    });
   }
 
   function renderHubCards(){
