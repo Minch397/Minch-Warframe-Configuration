@@ -970,6 +970,9 @@ function openBuild(w) {
   setTimeout(() => {
     document.body.classList.add("build-open");
     buildPage.style.display = "block";
+    // V27: masque explicitement la scrollbar du conteneur de configuration.
+    buildPage.style.setProperty("scrollbar-width", "none", "important");
+    buildPage.style.setProperty("-ms-overflow-style", "none", "important");
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     fillBuildContent(w);
     requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
