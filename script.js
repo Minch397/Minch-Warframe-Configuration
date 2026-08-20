@@ -5281,3 +5281,96 @@ window.minchPreloadImage = minchPreloadImage;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
 
+
+/* =========================================================
+   V24 — textarea auto-extensibles + sauvegarde globale fiable
+   ========================================================= */
+(() => {
+  "use strict";
+
+  function autoGrowTextarea(el) {
+    if (!el || el.tagName !== "TEXTAREA") return;
+    el.style.height = "auto";
+    const minHeight = el.closest("#adminEditorModal") ? 180 : 150;
+    el.style.height = Math.max(minHeight, el.scrollHeight + 2) + "px";
+  }
+
+  function growAll(root = document) {
+    root.querySelectorAll?.("#adminEditorModal textarea, .hub-editor-overlay textarea").forEach(autoGrowTextarea);
+  }
+
+  document.addEventListener("input", (event) => {
+    const el = event.target;
+    if (el && el.matches?.("#adminEditorModal textarea, .hub-editor-overlay textarea")) {
+      autoGrowTextarea(el);
+    }
+  }, true);
+
+  // Les formulaires admin sont injectés dynamiquement : on redimensionne dès leur apparition.
+  const observer = new MutationObserver((mutations) => {
+    let shouldGrow = false;
+    for (const mutation of mutations) {
+      if (mutation.addedNodes && mutation.addedNodes.length) {
+        shouldGrow = true;
+        break;
+      }
+    }
+    if (shouldGrow) requestAnimationFrame(() => growAll(document));
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  // Une seule action "Sauvegarder" doit enregistrer l'intégralité du formulaire.
+  // On neutralise les anciens listeners éventuels sur le bouton puis on appelle
+  // la sauvegarde robuste qui capture tous les champs et attend tous les uploads.
+  function installGlobalSaveButton() {
+    const oldButton = document.getElementById("saveAdminEdit");
+    if (!oldButton || oldButton.dataset.v24GlobalSave === "1") return;
+
+    const button = oldButton.cloneNode(true);
+    button.dataset.v24GlobalSave = "1";
+    oldButton.replaceWith(button);
+
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const status = document.getElementById("adminSaveStatus");
+      button.disabled = true;
+      if (status) status.textContent = "Sauvegarde complète en cours…";
+
+      try {
+        if (typeof window.minchRobustSaveEditor !== "function") {
+          throw new Error("La sauvegarde globale n'est pas disponible.");
+        }
+        await window.minchRobustSaveEditor();
+        if (status && !/Erreur/i.test(status.textContent || "")) {
+          status.textContent = "Toute la configuration a été sauvegardée.";
+        }
+      } catch (error) {
+        console.error("V24 — erreur sauvegarde globale :", error);
+        if (status) status.textContent = "Erreur pendant la sauvegarde complète.";
+      } finally {
+        button.disabled = false;
+      }
+    }, true);
+  }
+
+  const saveObserver = new MutationObserver(() => {
+    installGlobalSaveButton();
+    growAll(document);
+  });
+  saveObserver.observe(document.documentElement, { childList: true, subtree: true });
+
+  document.addEventListener("click", () => {
+    setTimeout(() => {
+      installGlobalSaveButton();
+      growAll(document);
+    }, 0);
+  }, true);
+
+  window.addEventListener("load", () => {
+    installGlobalSaveButton();
+    growAll(document);
+  });
+})();

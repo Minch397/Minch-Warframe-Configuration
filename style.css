@@ -3678,3 +3678,69 @@ body.minch-details-open{
   .recent-updates-section[data-recent-height="3"] .recent-update-card{min-height:300px;height:300px;}
   .recent-updates-admin-btn{position:static;display:block;margin:0 auto 10px;}
 }
+
+/* =========================================================
+   V24 — Edition plus confortable
+   ========================================================= */
+
+/* Le site reste scrollable, mais la barre verticale n'est plus visible. */
+html,
+body,
+.build,
+.build-content,
+.admin-modal,
+.admin-editor-modal,
+.admin-modal-card,
+.admin-editor-card,
+#adminEditorContent,
+.hub-editor-card,
+.minch-details-body,
+.build-toc {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.build::-webkit-scrollbar,
+.build-content::-webkit-scrollbar,
+.admin-modal::-webkit-scrollbar,
+.admin-editor-modal::-webkit-scrollbar,
+.admin-modal-card::-webkit-scrollbar,
+.admin-editor-card::-webkit-scrollbar,
+#adminEditorContent::-webkit-scrollbar,
+.hub-editor-card::-webkit-scrollbar,
+.minch-details-body::-webkit-scrollbar,
+.build-toc::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+/* Zones de texte admin : larges, hautes et sans mini-scroll interne. */
+#adminEditorModal .admin-textarea,
+#adminEditorModal textarea,
+.hub-editor-overlay .admin-textarea,
+.hub-editor-overlay textarea {
+  width: 100% !important;
+  min-height: 180px !important;
+  height: auto;
+  overflow-y: hidden !important;
+  resize: none !important;
+  box-sizing: border-box !important;
+  line-height: 1.55 !important;
+}
+
+/* L'éditeur profite mieux de l'écran, sans toucher au rendu public. */
+#adminEditorModal .admin-editor-card {
+  width: min(96vw, 1320px) !important;
+  max-width: 1320px !important;
+}
+
+@media (max-width: 760px) {
+  #adminEditorModal .admin-textarea,
+  #adminEditorModal textarea,
+  .hub-editor-overlay .admin-textarea,
+  .hub-editor-overlay textarea {
+    min-height: 150px !important;
+  }
+}
