@@ -3744,3 +3744,21 @@ body::-webkit-scrollbar,
     min-height: 150px !important;
   }
 }
+
+/* V25 — Masquage total des barres de défilement visibles.
+   Le défilement reste fonctionnel à la molette, au trackpad et au clavier. */
+html,
+body,
+body *,
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
