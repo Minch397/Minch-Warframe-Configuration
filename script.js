@@ -5377,3 +5377,185 @@ window.minchPreloadImage = minchPreloadImage;
     growAll(document);
   });
 })();
+
+/* =========================================================
+   V28 — Lotus : panneau IA de l'éditeur Warframe
+   Le front-end est prêt. L'analyse réelle appelle /api/lotus-analyze.
+   La clé IA doit rester côté serveur, jamais dans ce fichier public.
+   ========================================================= */
+(() => {
+  "use strict";
+
+  const LOTUS_PROFILE_KEY = "minch_lotus_profile_v1";
+  const LOTUS_SLOTS = [
+    { id:"warframe", label:"Warframe" },
+    { id:"principale", label:"Arme principale" },
+    { id:"secondaire", label:"Arme secondaire" },
+    { id:"melee", label:"Arme de mêlée" },
+    { id:"exaltee1", label:"Arme exaltée 1" },
+    { id:"exaltee2", label:"Arme exaltée 2" },
+    { id:"exaltee3", label:"Arme exaltée 3" },
+    { id:"compagnon", label:"Compagnon" },
+    { id:"armeCompagnon", label:"Arme du compagnon" }
+  ];
+  const lotusImages = new Map();
+
+  function lotusEsc(v){
+    return String(v ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  }
+  function readProfile(){
+    try{return JSON.parse(localStorage.getItem(LOTUS_PROFILE_KEY)||"{}")||{}}catch(_){return{}}
+  }
+  function saveProfile(next){
+    try{localStorage.setItem(LOTUS_PROFILE_KEY,JSON.stringify({...readProfile(),...next}))}catch(_){}
+  }
+  function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
+  }
+  function defaultAvatar(){
+    return "data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs><rect width="128" height="128" rx="64" fill="#07111f"/><circle cx="64" cy="64" r="49" fill="none" stroke="url(#g)" stroke-width="5"/><path d="M39 76c8-27 16-38 25-38 10 0 18 11 26 38-10-7-19-10-26-10s-15 3-25 10Z" fill="url(#g)"/><circle cx="64" cy="54" r="10" fill="#e0f2fe"/></svg>`);
+  }
+  function setLotusImage(slotId, file){
+    if(!file || !file.type?.startsWith("image/")) return;
+    lotusImages.set(slotId,file);
+    const zone=document.querySelector(`.lotus-dropzone[data-slot="${slotId}"]`);
+    if(!zone)return;
+    const img=zone.querySelector(".lotus-preview");
+    const old=img.dataset.objectUrl;
+    if(old) URL.revokeObjectURL(old);
+    const url=URL.createObjectURL(file);
+    img.src=url; img.dataset.objectUrl=url;
+    zone.classList.add("has-image");
+  }
+  function clearLotusImage(slotId){
+    lotusImages.delete(slotId);
+    const zone=document.querySelector(`.lotus-dropzone[data-slot="${slotId}"]`);
+    if(!zone)return;
+    const img=zone.querySelector(".lotus-preview");
+    if(img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.removeAttribute("src"); delete img.dataset.objectUrl;
+    zone.classList.remove("has-image");
+    const input=document.getElementById(`lotusFile_${slotId}`); if(input)input.value="";
+  }
+  function inferNames(){
+    const get=id=>document.getElementById(id)?.value?.trim()||"";
+    return {
+      warframe:get("editBuildName") || get("editWarframeName"),
+      principale:get("editWeaponName_principale"),
+      secondaire:get("editWeaponName_secondaire"),
+      melee:get("editWeaponName_melee"),
+      compagnon:get("editCompanionName"),
+      armeCompagnon:get("editCompanionWeaponName")
+    };
+  }
+  function renderSlots(){
+    const root=document.getElementById("lotusSlots"); if(!root)return;
+    const names=inferNames();
+    root.innerHTML=LOTUS_SLOTS.map(slot=>`<section class="lotus-slot" data-lotus-slot="${slot.id}">
+      <div class="lotus-slot-head"><strong>${lotusEsc(slot.label)}</strong><button class="lotus-slot-clear" type="button" data-lotus-clear="${slot.id}" title="Retirer le screen">×</button></div>
+      <input class="admin-input lotus-name" id="lotusName_${slot.id}" value="${lotusEsc(names[slot.id]||"")}" placeholder="Nom pour le titre généré">
+      <div class="lotus-dropzone" data-slot="${slot.id}" tabindex="0">
+        <span>Ctrl+V ici<br>ou cliquer / déposer un screen</span>
+        <img class="lotus-preview" alt="Aperçu du screen ${lotusEsc(slot.label)}">
+        <input id="lotusFile_${slot.id}" type="file" accept="image/*" hidden>
+      </div>
+    </section>`).join("");
+
+    root.querySelectorAll(".lotus-dropzone").forEach(zone=>{
+      const id=zone.dataset.slot;
+      const input=document.getElementById(`lotusFile_${id}`);
+      zone.addEventListener("click",()=>input?.click());
+      zone.addEventListener("focus",()=>zone.classList.add("is-focused"));
+      zone.addEventListener("blur",()=>zone.classList.remove("is-focused"));
+      input?.addEventListener("change",()=>setLotusImage(id,input.files?.[0]));
+      zone.addEventListener("dragover",e=>{e.preventDefault();zone.classList.add("is-dragover")});
+      zone.addEventListener("dragleave",()=>zone.classList.remove("is-dragover"));
+      zone.addEventListener("drop",e=>{e.preventDefault();zone.classList.remove("is-dragover");setLotusImage(id,[...e.dataTransfer.files].find(f=>f.type.startsWith("image/")))});
+      zone.addEventListener("paste",e=>{
+        const f=[...(e.clipboardData?.files||[])].find(x=>x.type.startsWith("image/"));
+        if(f){e.preventDefault();setLotusImage(id,f)}
+      });
+    });
+    root.querySelectorAll("[data-lotus-clear]").forEach(btn=>btn.addEventListener("click",()=>clearLotusImage(btn.dataset.lotusClear)));
+  }
+  function initProfile(){
+    const profile=readProfile();
+    const avatar=document.getElementById("lotusAvatar");
+    const banner=document.getElementById("lotusBanner");
+    if(avatar)avatar.src=profile.avatar||defaultAvatar();
+    if(banner && profile.banner) banner.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(1,5,15,.22)),url(${JSON.stringify(profile.banner).slice(1,-1)})`;
+    const ai=document.getElementById("lotusAvatarInput");
+    const bi=document.getElementById("lotusBannerInput");
+    ai?.addEventListener("change",async()=>{const f=ai.files?.[0];if(!f)return;const d=await fileToDataURL(f);saveProfile({avatar:d});if(avatar)avatar.src=d});
+    bi?.addEventListener("change",async()=>{const f=bi.files?.[0];if(!f)return;const d=await fileToDataURL(f);saveProfile({banner:d});if(banner)banner.style.backgroundImage=`linear-gradient(180deg,rgba(0,0,0,.04),rgba(1,5,15,.22)),url(${d})`});
+  }
+  function collectPayload(){
+    return LOTUS_SLOTS.map(slot=>({
+      id:slot.id,
+      label:slot.label,
+      name:document.getElementById(`lotusName_${slot.id}`)?.value?.trim()||"",
+      file:lotusImages.get(slot.id)||null
+    })).filter(x=>x.file);
+  }
+  function setStatus(msg,type=""){
+    const el=document.getElementById("lotusStatus");if(!el)return;el.className=`lotus-status ${type}`;el.textContent=msg;
+  }
+  function renderResults(items){
+    const root=document.getElementById("lotusResults");if(!root)return;
+    root.innerHTML=(items||[]).map((r,i)=>`<article class="lotus-result">
+      <div class="lotus-result-head"><div><strong>${lotusEsc(r.name||r.label||"Résultat")}</strong><div class="lotus-counts">${lotusEsc(r.summary||`${r.recognized??0}/${r.total??0} éléments reconnus`)}</div></div><button class="lotus-copy" type="button" data-copy-result="${i}">Copier</button></div>
+      <textarea class="admin-textarea" data-result-text="${i}">${lotusEsc(r.text||"")}</textarea>
+      ${(r.missing?.length)?`<div class="lotus-missing">⚠ Non reconnu : ${lotusEsc(r.missing.join(", "))}</div>`:""}
+    </article>`).join("");
+    root.querySelectorAll("[data-copy-result]").forEach(btn=>btn.addEventListener("click",async()=>{
+      const ta=root.querySelector(`[data-result-text="${btn.dataset.copyResult}"]`);if(!ta)return;
+      try{await navigator.clipboard.writeText(ta.value);btn.textContent="Copié ✓";setTimeout(()=>btn.textContent="Copier",1300)}catch(_){ta.select();document.execCommand("copy")}
+    }));
+  }
+  async function analyzeLotus(){
+    const slots=collectPayload();
+    if(!slots.length){setStatus("Ajoute au moins un screen avant d'analyser.","warn");return}
+    const btn=document.getElementById("lotusAnalyze"); if(btn){btn.disabled=true;btn.textContent="Analyse en cours…"}
+    setStatus(`Analyse de ${slots.length} screen${slots.length>1?"s":""}…`);
+    try{
+      const form=new FormData();
+      form.append("slots",JSON.stringify(slots.map(({id,label,name})=>({id,label,name}))));
+      slots.forEach(s=>form.append(`image_${s.id}`,s.file,s.file.name||`${s.id}.png`));
+      const response=await fetch("/api/lotus-analyze",{method:"POST",body:form});
+      if(!response.ok){
+        if(response.status===404) throw new Error("LOTUS_BACKEND_MISSING");
+        throw new Error(`HTTP_${response.status}`);
+      }
+      const data=await response.json();
+      renderResults(data.results||[]);
+      const missing=(data.results||[]).reduce((n,r)=>n+(r.missing?.length||0),0);
+      setStatus(missing?`Analyse terminée. ${missing} élément${missing>1?"s":""} à vérifier.`:"Analyse terminée : tout ce qui a été trouvé dans la bibliothèque est prêt à copier.",missing?"warn":"ok");
+    }catch(err){
+      console.error("Lotus analyse:",err);
+      if(String(err?.message)==="LOTUS_BACKEND_MISSING"){
+        setStatus("Interface Lotus prête. Il manque encore le backend IA sécurisé (/api/lotus-analyze) pour lancer la reconnaissance réelle.","warn");
+      }else{
+        setStatus("Lotus n'a pas pu contacter le service d'analyse. Vérifie le backend IA.","error");
+      }
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent="Analyser toute la configuration"}
+    }
+  }
+  function initLotus(){
+    if(!document.getElementById("lotusPanel") || document.getElementById("lotusPanel").dataset.ready==="1")return;
+    document.getElementById("lotusPanel").dataset.ready="1";
+    initProfile();renderSlots();
+    document.getElementById("lotusAnalyze")?.addEventListener("click",analyzeLotus);
+  }
+  const obs=new MutationObserver(()=>{
+    const modal=document.getElementById("adminEditorModal");
+    if(modal?.classList.contains("open")){
+      initLotus();
+      // Les noms de l'éditeur peuvent changer d'une config à l'autre : si aucun screen n'est en attente, on resynchronise les champs.
+      const names=inferNames();
+      LOTUS_SLOTS.forEach(s=>{const i=document.getElementById(`lotusName_${s.id}`);if(i&&!i.value&&names[s.id])i.value=names[s.id]});
+    }
+  });
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:["class"]});initLotus()},{once:true});
+  else {obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:["class"]});initLotus()}
+})();

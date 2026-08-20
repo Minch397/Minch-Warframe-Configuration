@@ -101,7 +101,30 @@
   <div id="adminEditorModal" class="admin-modal admin-editor-modal" aria-hidden="true">
     <div class="admin-modal-card admin-editor-card">
       <button class="admin-back" type="button" data-editor-close aria-label="Retour">←</button>
-      <div id="adminEditorContent"></div>
+      <div class="admin-editor-layout">
+        <div id="adminEditorContent" class="admin-editor-main"></div>
+        <aside id="lotusPanel" class="lotus-panel" aria-label="Lotus, assistant IA">
+          <div class="lotus-banner" id="lotusBanner">
+            <div class="lotus-banner-shade"></div>
+            <label class="lotus-avatar-wrap" title="Modifier la photo de profil de Lotus">
+              <img id="lotusAvatar" class="lotus-avatar" alt="Photo de profil de Lotus">
+              <input id="lotusAvatarInput" type="file" accept="image/*" hidden>
+            </label>
+            <div class="lotus-title-wrap">
+              <strong>Lotus</strong>
+              <span>Assistant IA</span>
+            </div>
+            <label class="lotus-banner-edit" title="Modifier la bannière">✎<input id="lotusBannerInput" type="file" accept="image/*" hidden></label>
+          </div>
+          <div class="lotus-body">
+            <p class="lotus-help">Nom + screen de build. Tu peux coller une image directement avec <b>Ctrl+V</b> dans la case voulue.</p>
+            <div id="lotusSlots" class="lotus-slots"></div>
+            <button id="lotusAnalyze" class="admin-primary lotus-analyze" type="button">Analyser toute la configuration</button>
+            <div id="lotusStatus" class="lotus-status" aria-live="polite"></div>
+            <div id="lotusResults" class="lotus-results"></div>
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 
@@ -232,3 +255,5 @@
 <script type="module" src="script.js?v=minch-hub-v27-scrollfix"></script>
 </body>
 </html>
+
+<!-- V28 Lotus -->
