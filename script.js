@@ -5301,11 +5301,24 @@ window.minchPreloadImage = minchPreloadImage;
 (() => {
   "use strict";
 
+  function getScrollHost(el) {
+    return el?.closest?.("#buildPage, #adminEditorModal, .hub-editor-overlay") || document.scrollingElement || document.documentElement;
+  }
+
   function autoGrowTextarea(el) {
     if (!el || el.tagName !== "TEXTAREA") return;
-    el.style.height = "auto";
+    const host = getScrollHost(el);
+    const hostScroll = host === document.scrollingElement || host === document.documentElement ? window.scrollY : host.scrollTop;
+    const pageScroll = window.scrollY;
     const minHeight = el.closest("#adminEditorModal") ? 180 : 150;
-    el.style.height = Math.max(minHeight, el.scrollHeight + 2) + "px";
+    const wanted = Math.max(minHeight, el.scrollHeight + 2);
+    const current = Math.round(el.getBoundingClientRect().height);
+    if (Math.abs(current - wanted) < 2) return;
+    el.style.height = wanted + "px";
+    requestAnimationFrame(() => {
+      if (host === document.scrollingElement || host === document.documentElement) window.scrollTo({top: pageScroll, left: window.scrollX, behavior: "instant"});
+      else host.scrollTop = hostScroll;
+    });
   }
 
   function growAll(root = document) {
@@ -5321,14 +5334,15 @@ window.minchPreloadImage = minchPreloadImage;
 
   // Les formulaires admin sont injectés dynamiquement : on redimensionne dès leur apparition.
   const observer = new MutationObserver((mutations) => {
-    let shouldGrow = false;
+    const added = [];
     for (const mutation of mutations) {
-      if (mutation.addedNodes && mutation.addedNodes.length) {
-        shouldGrow = true;
-        break;
+      for (const node of mutation.addedNodes || []) {
+        if (!(node instanceof Element)) continue;
+        if (node.matches?.("#adminEditorModal textarea, .hub-editor-overlay textarea")) added.push(node);
+        node.querySelectorAll?.("#adminEditorModal textarea, .hub-editor-overlay textarea").forEach(el => added.push(el));
       }
     }
-    if (shouldGrow) requestAnimationFrame(() => growAll(document));
+    if (added.length) requestAnimationFrame(() => [...new Set(added)].forEach(autoGrowTextarea));
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
@@ -5378,7 +5392,6 @@ window.minchPreloadImage = minchPreloadImage;
   document.addEventListener("click", () => {
     setTimeout(() => {
       installGlobalSaveButton();
-      growAll(document);
     }, 0);
   }, true);
 
@@ -5533,27 +5546,42 @@ window.minchPreloadImage = minchPreloadImage;
   async function analyzeLotus(){
     const slots=collectPayload();
     if(!slots.length){setStatus("Ajoute au moins un screen avant d'analyser.","warn");return}
-    const btn=document.getElementById("lotusAnalyze"); if(btn){btn.disabled=true;btn.textContent="Analyse en cours…"}
-    setStatus(`Analyse de ${slots.length} screen${slots.length>1?"s":""}…`);
+    const btn=document.getElementById("lotusAnalyze");
+    if(btn){btn.disabled=true;btn.textContent="Analyse en cours…"}
+    const endpoint=(location.hostname==="localhost"||location.hostname==="127.0.0.1")?"/api/lotus-analyze":LOTUS_API_URL;
+    const results=[];
+    let failed=0;
     try{
-      const payload=[];
-      for(const s of slots){ payload.push({id:s.id,label:s.label,name:s.name,image:await lotusFilePayload(s.file)}); }
-      const endpoint=(location.hostname==="localhost"||location.hostname==="127.0.0.1")?"/api/lotus-analyze":LOTUS_API_URL;
       if(endpoint.includes("TON-PROJET")) throw new Error("LOTUS_VERCEL_URL_MISSING");
-      const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:payload})});
-      if(!response.ok){
-        const errData=await response.json().catch(()=>({}));
-        if(response.status===404) throw new Error("LOTUS_BACKEND_MISSING");
-        throw new Error(errData.error||`HTTP_${response.status}`);
+      for(let i=0;i<slots.length;i++){
+        const s=slots[i];
+        setStatus(`Analyse ${i+1}/${slots.length} : ${s.name||s.label}…`);
+        if(btn) btn.textContent=`Analyse ${i+1}/${slots.length}…`;
+        try{
+          const item={id:s.id,label:s.label,name:s.name,image:await lotusFilePayload(s.file)};
+          const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:[item]})});
+          if(!response.ok){
+            const errData=await response.json().catch(()=>({}));
+            if(response.status===404) throw new Error("LOTUS_BACKEND_MISSING");
+            throw new Error(errData.error||`HTTP_${response.status}`);
+          }
+          const data=await response.json();
+          if(data.results?.[0]) results.push(data.results[0]);
+          else throw new Error("Aucun résultat reçu");
+        }catch(err){
+          failed++;
+          console.error(`Lotus ${i+1}/${slots.length}:`,err);
+          results.push({name:s.name||s.label,label:s.label,recognized:0,total:0,missing:[],text:`Analyse impossible pour ${s.name||s.label}.\n\nErreur : ${err?.message||"erreur inconnue"}`,summary:"Échec de l’analyse"});
+        }
+        renderResults(results);
       }
-      const data=await response.json();
-      renderResults(data.results||[]);
-      const missing=(data.results||[]).reduce((n,r)=>n+(r.missing?.length||0),0);
-      setStatus(missing?`Analyse terminée. ${missing} élément${missing>1?"s":""} à vérifier.`:"Analyse terminée : descriptions prêtes à copier.",missing?"warn":"ok");
+      const missing=results.reduce((n,r)=>n+(r.missing?.length||0),0);
+      if(failed) setStatus(`Analyse terminée : ${results.length-failed}/${slots.length} réussie${results.length-failed>1?"s":""}, ${failed} échec${failed>1?"s":""}. Les résultats réussis sont conservés.`,"warn");
+      else setStatus(missing?`Analyse terminée. ${missing} élément${missing>1?"s":""} à vérifier.`:"Analyse terminée : descriptions prêtes à copier.",missing?"warn":"ok");
     }catch(err){
       console.error("Lotus analyse:",err);
       if(String(err?.message)==="LOTUS_BACKEND_MISSING") setStatus("Backend Lotus introuvable.","warn");
-      else if(String(err?.message)==="LOTUS_VERCEL_URL_MISSING") setStatus("Ajoute l’adresse Vercel de Lotus dans LOTUS_API_URL (script.js).","warn");
+      else if(String(err?.message)==="LOTUS_VERCEL_URL_MISSING") setStatus("Adresse Vercel de Lotus manquante.","warn");
       else setStatus(`Lotus : ${err?.message||"erreur d'analyse"}`,"error");
     }finally{
       if(btn){btn.disabled=false;btn.textContent="Analyser toute la configuration"}
