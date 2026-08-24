@@ -5396,7 +5396,7 @@ window.minchPreloadImage = minchPreloadImage;
 (() => {
   "use strict";
 
-  const LOTUS_API_URL = "https://minch-warframe-configuration.vercel.app/api/lotus";
+  const LOTUS_API_URL = "https://minch-warframe-configuration.vercel.app/api/lotus-analyze";
   const LOTUS_SLOTS = [
     { id:"warframe", label:"Warframe" },
     { id:"principale", label:"Arme principale" },
