@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/lotus-analyze.js": {
+      "includeFiles": "reference_boards/**",
+      "maxDuration": 60
+    }
+  }
+}

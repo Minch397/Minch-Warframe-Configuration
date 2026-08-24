@@ -3886,3 +3886,10 @@ body.build-open .buildpage::-webkit-scrollbar-track,
   .admin-editor-layout{grid-template-columns:1fr}
   .lotus-panel{position:relative;max-height:none}
 }
+
+
+/* V30 — Lotus simplifiée */
+.lotus-banner,.lotus-banner-shade,.lotus-avatar-wrap,.lotus-avatar,.lotus-title-wrap,.lotus-banner-edit{display:none!important}
+.lotus-simple-head{padding:16px 16px 12px;border-bottom:1px solid rgba(125,211,252,.14);display:flex;align-items:baseline;gap:9px;background:rgba(7,17,31,.72);border-radius:20px 20px 0 0}
+.lotus-simple-head strong{font-size:22px;line-height:1;color:#fff}
+.lotus-simple-head span{font-size:11px;opacity:.62;font-weight:700;letter-spacing:.05em;text-transform:uppercase}

@@ -3965,6 +3965,16 @@ window.minchPreloadImage = minchPreloadImage;
 
       const originalId = modal.dataset.minchEditingId || "";
       const originalName = modal.dataset.minchEditingName || "";
+      // V30 : recharge la dernière copie Firebase avant la sauvegarde pour préserver les images/références existantes.
+      let remoteData = null;
+      try { remoteData = await loadFirebaseAdminData(); } catch(e) { console.warn("Firebase avant sauvegarde :", e); }
+      if (Array.isArray(remoteData) && remoteData.length) {
+        const remoteMatch = remoteData.find(w => (originalId && w._id === originalId) || (originalName && w.name === originalName));
+        if (remoteMatch) {
+          const localIndex = (warframesData || []).findIndex(w => (originalId && w._id === originalId) || (originalName && w.name === originalName));
+          if (localIndex >= 0) warframesData[localIndex] = deepClone(remoteMatch);
+        }
+      }
       const existing = (warframesData || []).find(w => (originalId && w._id === originalId) || (!originalId && originalName && w.name === originalName));
       const editing = existing ? deepClone(existing) : { _id: originalId || makeStableId(getValue("editWarframeName")), name:"", builds:[{}] };
       if (!editing._id) editing._id = makeStableId(editing.name || getValue("editWarframeName"));
@@ -5379,14 +5389,14 @@ window.minchPreloadImage = minchPreloadImage;
 })();
 
 /* =========================================================
-   V28 — Lotus : panneau IA de l'éditeur Warframe
+   V30 — Lotus : panneau IA de l'éditeur Warframe
    Le front-end est prêt. L'analyse réelle appelle /api/lotus-analyze.
    La clé IA doit rester côté serveur, jamais dans ce fichier public.
    ========================================================= */
 (() => {
   "use strict";
 
-  const LOTUS_PROFILE_KEY = "minch_lotus_profile_v1";
+  const LOTUS_API_URL = "https://TON-PROJET.vercel.app/api/lotus-analyze";
   const LOTUS_SLOTS = [
     { id:"warframe", label:"Warframe" },
     { id:"principale", label:"Arme principale" },
@@ -5500,7 +5510,11 @@ window.minchPreloadImage = minchPreloadImage;
   function setStatus(msg,type=""){
     const el=document.getElementById("lotusStatus");if(!el)return;el.className=`lotus-status ${type}`;el.textContent=msg;
   }
+  function cleanLotusText(text){
+    return String(text||"").replace(/\*\*/g,"").replace(/<br\s*\/?\s*>/gi,"\n").replace(/\[br\]/gi,"\n").replace(/\r\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+  }
   function renderResults(items){
+    items=(items||[]).map(r=>({...r,text:cleanLotusText(r.text)}));
     const root=document.getElementById("lotusResults");if(!root)return;
     root.innerHTML=(items||[]).map((r,i)=>`<article class="lotus-result">
       <div class="lotus-result-head"><div><strong>${lotusEsc(r.name||r.label||"Résultat")}</strong><div class="lotus-counts">${lotusEsc(r.summary||`${r.recognized??0}/${r.total??0} éléments reconnus`)}</div></div><button class="lotus-copy" type="button" data-copy-result="${i}">Copier</button></div>
@@ -5512,31 +5526,35 @@ window.minchPreloadImage = minchPreloadImage;
       try{await navigator.clipboard.writeText(ta.value);btn.textContent="Copié ✓";setTimeout(()=>btn.textContent="Copier",1300)}catch(_){ta.select();document.execCommand("copy")}
     }));
   }
+  async function lotusFilePayload(file){
+    const dataUrl=await fileToDataURL(file);
+    return { name:file.name||"screen.png", type:file.type||"image/png", dataUrl };
+  }
   async function analyzeLotus(){
     const slots=collectPayload();
     if(!slots.length){setStatus("Ajoute au moins un screen avant d'analyser.","warn");return}
     const btn=document.getElementById("lotusAnalyze"); if(btn){btn.disabled=true;btn.textContent="Analyse en cours…"}
     setStatus(`Analyse de ${slots.length} screen${slots.length>1?"s":""}…`);
     try{
-      const form=new FormData();
-      form.append("slots",JSON.stringify(slots.map(({id,label,name})=>({id,label,name}))));
-      slots.forEach(s=>form.append(`image_${s.id}`,s.file,s.file.name||`${s.id}.png`));
-      const response=await fetch("/api/lotus-analyze",{method:"POST",body:form});
+      const payload=[];
+      for(const s of slots){ payload.push({id:s.id,label:s.label,name:s.name,image:await lotusFilePayload(s.file)}); }
+      const endpoint=(location.hostname==="localhost"||location.hostname==="127.0.0.1")?"/api/lotus-analyze":LOTUS_API_URL;
+      if(endpoint.includes("TON-PROJET")) throw new Error("LOTUS_VERCEL_URL_MISSING");
+      const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:payload})});
       if(!response.ok){
+        const errData=await response.json().catch(()=>({}));
         if(response.status===404) throw new Error("LOTUS_BACKEND_MISSING");
-        throw new Error(`HTTP_${response.status}`);
+        throw new Error(errData.error||`HTTP_${response.status}`);
       }
       const data=await response.json();
       renderResults(data.results||[]);
       const missing=(data.results||[]).reduce((n,r)=>n+(r.missing?.length||0),0);
-      setStatus(missing?`Analyse terminée. ${missing} élément${missing>1?"s":""} à vérifier.`:"Analyse terminée : tout ce qui a été trouvé dans la bibliothèque est prêt à copier.",missing?"warn":"ok");
+      setStatus(missing?`Analyse terminée. ${missing} élément${missing>1?"s":""} à vérifier.`:"Analyse terminée : descriptions prêtes à copier.",missing?"warn":"ok");
     }catch(err){
       console.error("Lotus analyse:",err);
-      if(String(err?.message)==="LOTUS_BACKEND_MISSING"){
-        setStatus("Interface Lotus prête. Il manque encore le backend IA sécurisé (/api/lotus-analyze) pour lancer la reconnaissance réelle.","warn");
-      }else{
-        setStatus("Lotus n'a pas pu contacter le service d'analyse. Vérifie le backend IA.","error");
-      }
+      if(String(err?.message)==="LOTUS_BACKEND_MISSING") setStatus("Backend Lotus introuvable.","warn");
+      else if(String(err?.message)==="LOTUS_VERCEL_URL_MISSING") setStatus("Ajoute l’adresse Vercel de Lotus dans LOTUS_API_URL (script.js).","warn");
+      else setStatus(`Lotus : ${err?.message||"erreur d'analyse"}`,"error");
     }finally{
       if(btn){btn.disabled=false;btn.textContent="Analyser toute la configuration"}
     }
@@ -5544,7 +5562,7 @@ window.minchPreloadImage = minchPreloadImage;
   function initLotus(){
     if(!document.getElementById("lotusPanel") || document.getElementById("lotusPanel").dataset.ready==="1")return;
     document.getElementById("lotusPanel").dataset.ready="1";
-    initProfile();renderSlots();
+    renderSlots();
     document.getElementById("lotusAnalyze")?.addEventListener("click",analyzeLotus);
   }
   const obs=new MutationObserver(()=>{
