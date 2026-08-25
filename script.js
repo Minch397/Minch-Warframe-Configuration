@@ -5852,115 +5852,81 @@ window.minchPreloadImage = minchPreloadImage;
 })();
 
 /* ============================================================
-   V39 — Ctrl+V robuste Lotus + zones images de l'éditeur
+   V41 — Ctrl+V unique et unifié : Lotus + éditeur principal
+   Un seul gestionnaire paste pour éviter les interceptions entre versions.
    ============================================================ */
 (function(){
   'use strict';
-  let pasteTarget = null;
+  let hoverTarget = null;
 
   function clipboardImage(e){
-    const cd=e.clipboardData;
-    if(!cd) return null;
-    for(const item of [...(cd.items||[])]){
-      if(item.kind==='file' && item.type && item.type.startsWith('image/')){
-        const f=item.getAsFile(); if(f) return f;
-      }
-    }
-    return [...(cd.files||[])].find(f=>f?.type?.startsWith('image/')) || null;
-  }
-
-  function putFileInInput(input,file){
-    if(!input||!file) return;
-    try{
-      const dt=new DataTransfer(); dt.items.add(file); input.files=dt.files;
-    }catch(_){ return; }
-    input.dispatchEvent(new Event('change',{bubbles:true}));
-  }
-
-  function previewMainZone(row,file){
-    if(!row||!file) return;
-    let p=row.querySelector('.minch-file-preview');
-    if(!p){p=document.createElement('div');p.className='minch-file-preview';row.appendChild(p)}
-    const u=URL.createObjectURL(file);
-    p.innerHTML=`<img src="${u}" alt="Aperçu"><div class="minch-zone-file"></div><div class="minch-zone-subtitle">Image collée — Ctrl+V pour remplacer</div>`;
-    const n=p.querySelector('.minch-zone-file'); if(n)n.textContent=file.name||'Image du presse-papiers';
-  }
-
-  // Le ciblage suit réellement ce qui est sous la souris, sans exiger de focus/clic.
-  document.addEventListener('pointerover',e=>{
-    const lotus=e.target.closest?.('.lotus-dropzone[data-slot]');
-    if(lotus){ pasteTarget={type:'lotus',el:lotus,id:lotus.dataset.slot}; return; }
-    const row=e.target.closest?.('#adminEditorModal .admin-file-row, #adminEditorModal .minch-image-zone');
-    if(row){ const input=row.querySelector('input[type="file"][accept*="image"]'); if(input) pasteTarget={type:'main',el:row,input}; }
-  },true);
-  document.addEventListener('pointerout',e=>{
-    if(!pasteTarget?.el) return;
-    const to=e.relatedTarget;
-    if(to && pasteTarget.el.contains(to)) return;
-    if(pasteTarget.el===e.target || pasteTarget.el.contains(e.target)) pasteTarget=null;
-  },true);
-
-  document.addEventListener('paste',e=>{
-    const modal=document.getElementById('adminEditorModal');
-    if(!modal?.classList.contains('open') || !pasteTarget) return;
-    const file=clipboardImage(e); if(!file) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    if(pasteTarget.type==='lotus'){
-      try{ setLotusImage(pasteTarget.id,file); }catch(err){console.error('Lotus collage V39',err)}
-    }else{
-      putFileInInput(pasteTarget.input,file);
-      previewMainZone(pasteTarget.el,file);
-    }
-  },true);
-})();
-
-/* ============================================================
-   V40 — Ctrl+V Lotus : même logique directe que l'éditeur principal
-   Le slot est résolu au moment exact du collage depuis la position souris.
-   ============================================================ */
-(function(){
-  'use strict';
-  let mouseX = -1, mouseY = -1;
-
-  document.addEventListener('pointermove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  }, {capture:true, passive:true});
-
-  function imageFromPaste(e){
     const cd = e.clipboardData;
     if(!cd) return null;
     for(const item of Array.from(cd.items || [])){
       if(item.kind === 'file' && item.type && item.type.startsWith('image/')){
-        const file = item.getAsFile();
-        if(file) return file;
+        const f = item.getAsFile();
+        if(f) return f;
       }
     }
-    return Array.from(cd.files || []).find(file => file && file.type && file.type.startsWith('image/')) || null;
+    return Array.from(cd.files || []).find(f => f && f.type && f.type.startsWith('image/')) || null;
   }
 
-  function lotusUnderMouse(){
-    if(mouseX < 0 || mouseY < 0) return null;
-    const el = document.elementFromPoint(mouseX, mouseY);
-    return el?.closest?.('.lotus-dropzone[data-slot]') || null;
+  function mainInput(zone){
+    return zone?.querySelector?.('input[type="file"][accept*="image"]') || null;
   }
 
-  document.addEventListener('paste', (e) => {
-    const file = imageFromPaste(e);
+  function resolveTarget(node){
+    if(!(node instanceof Element)) return null;
+    const lotus = node.closest('.lotus-dropzone[data-slot]');
+    if(lotus) return {type:'lotus', el:lotus, id:lotus.dataset.slot};
+    const main = node.closest('#adminEditorModal .admin-file-row, #adminEditorModal .minch-image-zone');
+    const input = mainInput(main);
+    if(main && input) return {type:'main', el:main, input};
+    return null;
+  }
+
+  // Mémorise la dernière zone réellement survolée. Cela marche même si Lotus
+  // est dans sa colonne indépendante et même si aucun élément n'a le focus.
+  document.addEventListener('pointerover', e => {
+    const t = resolveTarget(e.target);
+    if(t) hoverTarget = t;
+  }, true);
+
+  document.addEventListener('pointerout', e => {
+    if(!hoverTarget?.el) return;
+    const next = e.relatedTarget;
+    if(next instanceof Node && hoverTarget.el.contains(next)) return;
+    if(e.target === hoverTarget.el || hoverTarget.el.contains(e.target)) hoverTarget = null;
+  }, true);
+
+  function putMain(input,file){
+    try{
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(err){ console.error('Collage image éditeur V41',err); }
+  }
+
+  // IMPORTANT : un seul listener de collage. Pas de stopImmediatePropagation,
+  // afin de ne plus casser Lotus avec un ancien gestionnaire concurrent.
+  document.addEventListener('paste', e => {
+    const file = clipboardImage(e);
     if(!file) return;
 
-    // Priorité au slot Lotus réellement sous la souris au moment du Ctrl+V.
-    // Aucun clic/focus n'est nécessaire.
-    const zone = lotusUnderMouse() || document.activeElement?.closest?.('.lotus-dropzone[data-slot]');
-    if(!zone) return;
+    // Si l'utilisateur a cliqué/focus une zone, elle est prioritaire ; sinon survol.
+    const focused = resolveTarget(document.activeElement);
+    const target = focused || hoverTarget;
+    if(!target) return;
 
     e.preventDefault();
-    e.stopImmediatePropagation();
-    try {
-      setLotusImage(zone.dataset.slot, file);
-      zone.classList.add('is-hovered');
-    } catch(err) {
-      console.error('Lotus collage V40 :', err);
+    if(target.type === 'lotus'){
+      try{
+        setLotusImage(target.id,file);
+        target.el.classList.add('is-hovered');
+      }catch(err){ console.error('Collage Lotus V41',err); }
+    }else{
+      putMain(target.input,file);
     }
   }, true);
 })();
