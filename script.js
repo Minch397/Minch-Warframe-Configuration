@@ -5852,7 +5852,7 @@ window.minchPreloadImage = minchPreloadImage;
 })();
 
 /* ============================================================
-   V41 — Ctrl+V unique et unifié : Lotus + éditeur principal
+   V42 — Ctrl+V unique et unifié : Lotus + éditeur principal
    Un seul gestionnaire paste pour éviter les interceptions entre versions.
    ============================================================ */
 (function(){
@@ -5921,10 +5921,18 @@ window.minchPreloadImage = minchPreloadImage;
 
     e.preventDefault();
     if(target.type === 'lotus'){
+      // setLotusImage appartient au module Lotus (scope privé). On passe donc
+      // par le vrai input de la case, exactement comme un choix de fichier :
+      // son listener 'change' appelle ensuite setLotusImage dans le bon scope.
       try{
-        setLotusImage(target.id,file);
+        const input = document.getElementById(`lotusFile_${target.id}`);
+        if(!input) throw new Error(`Input Lotus introuvable: ${target.id}`);
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change',{bubbles:true}));
         target.el.classList.add('is-hovered');
-      }catch(err){ console.error('Collage Lotus V41',err); }
+      }catch(err){ console.error('Collage Lotus V42',err); }
     }else{
       putMain(target.input,file);
     }
