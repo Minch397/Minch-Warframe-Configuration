@@ -5696,3 +5696,49 @@ window.minchPreloadImage = minchPreloadImage;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:["class"]});initLotus()},{once:true});
   else {obs.observe(document.body,{attributes:true,subtree:true,attributeFilter:["class"]});initLotus()}
 })();
+
+
+/* =========================================================
+   V37 — verrouillage définitif des zones de texte de l'éditeur
+   ========================================================= */
+(() => {
+  "use strict";
+  const SELECTOR = "#adminEditorModal .admin-editor-main textarea";
+
+  function lockTextarea(el){
+    if(!el || el.dataset.v37FixedTextarea === "1") return;
+    el.dataset.v37FixedTextarea = "1";
+    el.rows = 7;
+    const props = {
+      height:"154px", minHeight:"154px", maxHeight:"154px",
+      blockSize:"154px", minBlockSize:"154px", maxBlockSize:"154px",
+      overflowY:"auto", overflowX:"hidden", resize:"none",
+      transition:"none", animation:"none"
+    };
+    for(const [k,v] of Object.entries(props)){
+      try{ el.style.setProperty(k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase()), v, "important"); }catch(_){ }
+    }
+  }
+
+  function lockAll(root=document){
+    root.querySelectorAll?.(SELECTOR).forEach(lockTextarea);
+  }
+
+  // Au chargement et à chaque ouverture/création de l'éditeur uniquement.
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",()=>lockAll(),{once:true});
+  else lockAll();
+
+  const modal=document.getElementById("adminEditorModal");
+  if(modal){
+    const mo=new MutationObserver(muts=>{
+      for(const m of muts){
+        for(const node of m.addedNodes||[]){
+          if(!(node instanceof Element)) continue;
+          if(node.matches?.(".admin-editor-main textarea")) lockTextarea(node);
+          node.querySelectorAll?.(".admin-editor-main textarea").forEach(lockTextarea);
+        }
+      }
+    });
+    mo.observe(modal,{childList:true,subtree:true});
+  }
+})();

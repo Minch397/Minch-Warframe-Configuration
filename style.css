@@ -3937,3 +3937,29 @@ body.build-open .buildpage::-webkit-scrollbar-track,
 .lotus-library-pending-item button{border:0;background:transparent;color:#fca5a5;cursor:pointer;font-size:16px;line-height:1}
 .lotus-library-save{width:100%;margin:8px 0 2px!important;padding:9px 10px!important;font-size:11px!important}
 .lotus-library-save:disabled{opacity:.45;cursor:not-allowed}
+
+
+/* =========================================================
+   V37 — éditeur Warframe : textareas réellement fixes
+   ========================================================= */
+/* Uniquement la colonne de modification de la configuration.
+   7 lignes fixes : aucune croissance automatique, aucun redimensionnement. */
+#adminEditorModal .admin-editor-main textarea,
+#adminEditorModal .admin-editor-main .admin-textarea {
+  field-sizing: fixed !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  width: 100% !important;
+  height: 154px !important;
+  min-height: 154px !important;
+  max-height: 154px !important;
+  block-size: 154px !important;
+  min-block-size: 154px !important;
+  max-block-size: 154px !important;
+  flex: 0 0 154px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  resize: none !important;
+  transition: none !important;
+  animation: none !important;
+}
