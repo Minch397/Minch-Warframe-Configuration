@@ -5308,15 +5308,21 @@ window.minchPreloadImage = minchPreloadImage;
   function autoGrowTextarea(el) {
     if (!el || el.tagName !== "TEXTAREA") return;
     const minHeight = el.closest("#adminEditorModal") ? 180 : 150;
-    // V33 : aucun window.scrollTo / scrollTop ici. Ces restaurations provoquaient
-    // les petits retours en arrière aléatoires pendant le scroll de l'éditeur.
-    const wanted = Math.max(minHeight, el.scrollHeight + 2);
-    const current = Math.round(el.getBoundingClientRect().height);
-    if (Math.abs(current - wanted) >= 2) el.style.height = wanted + "px";
+    const maxHeight = el.closest("#adminEditorModal") ? 520 : 420;
+    // V35 : on redimensionne UNIQUEMENT le champ en cours de saisie.
+    // Aucun recalcul global : cela évite les sauts de page pendant que Lotus ou l'éditeur changent le DOM.
+    el.style.height = "auto";
+    const wanted = Math.min(maxHeight, Math.max(minHeight, el.scrollHeight + 2));
+    el.style.height = wanted + "px";
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
   }
 
-  function growAll(root = document) {
-    root.querySelectorAll?.("#adminEditorModal textarea, .hub-editor-overlay textarea").forEach(autoGrowTextarea);
+  function prepareTextarea(el) {
+    if (!el || el.tagName !== "TEXTAREA" || el.dataset.v35Prepared === "1") return;
+    el.dataset.v35Prepared = "1";
+    // Hauteur de départ stable. Le champ grandit ensuite seulement quand l'utilisateur écrit.
+    el.style.height = (el.closest("#adminEditorModal") ? 180 : 150) + "px";
+    el.style.overflowY = "auto";
   }
 
   document.addEventListener("input", (event) => {
@@ -5336,7 +5342,7 @@ window.minchPreloadImage = minchPreloadImage;
         node.querySelectorAll?.("#adminEditorModal textarea, .hub-editor-overlay textarea").forEach(el => added.push(el));
       }
     }
-    if (added.length) requestAnimationFrame(() => [...new Set(added)].forEach(autoGrowTextarea));
+    if (added.length) requestAnimationFrame(() => [...new Set(added)].forEach(prepareTextarea));
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
@@ -5379,7 +5385,6 @@ window.minchPreloadImage = minchPreloadImage;
 
   const saveObserver = new MutationObserver(() => {
     installGlobalSaveButton();
-    growAll(document);
   });
   saveObserver.observe(document.documentElement, { childList: true, subtree: true });
 
@@ -5391,7 +5396,7 @@ window.minchPreloadImage = minchPreloadImage;
 
   window.addEventListener("load", () => {
     installGlobalSaveButton();
-    growAll(document);
+    document.querySelectorAll?.("#adminEditorModal textarea, .hub-editor-overlay textarea").forEach(prepareTextarea);
   });
 })();
 
@@ -5416,6 +5421,7 @@ window.minchPreloadImage = minchPreloadImage;
     { id:"armeCompagnon", label:"Arme du compagnon" }
   ];
   const lotusImages = new Map();
+  const lotusPendingReferences = new Map();
   const LOTUS_FIREBASE_LIBRARY_COLLECTION = "lotus_reference_boards";
 
   async function lotusLibraryAll(){
@@ -5432,11 +5438,12 @@ window.minchPreloadImage = minchPreloadImage;
   async function lotusLibraryAdd(files){
     if(!initMinchFirebase() || !firebaseDb || !firebaseStorage){
       setStatus("Firebase indisponible : impossible d’enregistrer la planche Lotus.","error");
-      return;
+      return false;
     }
-    setStatus("Ajout des références dans Firebase…");
-    for(const file of files){
-      if(!file?.type?.startsWith("image/")) continue;
+    const valid=[...(files||[])].filter(file=>file?.type?.startsWith("image/"));
+    if(!valid.length) return false;
+    setStatus(`Envoi de ${valid.length} référence${valid.length>1?"s":""} dans Firebase…`);
+    for(const file of valid){
       const id=(crypto.randomUUID?.()||Date.now()+"_"+Math.random().toString(36).slice(2));
       const safeName=(file.name||"planche.png").replace(/[^a-zA-Z0-9._-]+/g,"_");
       const storagePath=`lotus-reference-boards/${id}_${safeName}`;
@@ -5448,7 +5455,8 @@ window.minchPreloadImage = minchPreloadImage;
       });
     }
     await renderLotusLibrary();
-    setStatus("Référence Lotus enregistrée dans Firebase.","ok");
+    setStatus(`${valid.length} référence${valid.length>1?"s":""} enregistrée${valid.length>1?"s":""} dans Firebase. Tu peux relancer l’analyse.`,"ok");
+    return true;
   }
 
   async function lotusLibraryRemove(id){
@@ -5472,21 +5480,55 @@ window.minchPreloadImage = minchPreloadImage;
     const list=document.getElementById("lotusLibraryList"),count=document.getElementById("lotusLibraryCount");
     if(!list)return;
     const items=await lotusLibraryAll();
-    if(count)count.textContent=`${items.length} planche${items.length>1?"s":""} enregistrée${items.length>1?"s":""} dans Firebase`;
+    if(count)count.textContent=`${items.length} planche${items.length>1?"s":""} enregistrée${items.length>1?"s":""}`;
     list.innerHTML=items.map(x=>`<div class="lotus-library-item"><span>${lotusEsc(x.name)}</span><button type="button" class="lotus-library-remove" data-library-remove="${lotusEsc(x.id)}">Retirer</button></div>`).join("");
     list.querySelectorAll("[data-library-remove]").forEach(b=>b.addEventListener("click",()=>lotusLibraryRemove(b.dataset.libraryRemove)));
   }
 
+  function renderPendingReferences(){
+    const root=document.getElementById("lotusLibraryPending");
+    const save=document.getElementById("lotusLibrarySave");
+    if(!root)return;
+    const items=[...lotusPendingReferences.entries()];
+    root.innerHTML=items.map(([id,file])=>`<div class="lotus-library-pending-item"><span>${lotusEsc(file.name||"planche.png")}</span><button type="button" data-pending-remove="${lotusEsc(id)}">×</button></div>`).join("");
+    root.querySelectorAll("[data-pending-remove]").forEach(btn=>btn.addEventListener("click",()=>{lotusPendingReferences.delete(btn.dataset.pendingRemove);renderPendingReferences()}));
+    if(save){save.disabled=!items.length;save.textContent=items.length?`Envoyer ${items.length} planche${items.length>1?"s":""} dans Firebase`:`Envoyer dans Firebase`;}
+  }
+
+  function stageLotusReferences(files){
+    for(const file of [...(files||[])]){
+      if(!file?.type?.startsWith("image/")) continue;
+      const id=(crypto.randomUUID?.()||Date.now()+"_"+Math.random().toString(36).slice(2));
+      lotusPendingReferences.set(id,file);
+    }
+    renderPendingReferences();
+  }
+
   function initLotusLibrary(){
-    const drop=document.getElementById("lotusLibraryDrop"),input=document.getElementById("lotusLibraryFiles");
+    const drop=document.getElementById("lotusLibraryDrop"),input=document.getElementById("lotusLibraryFiles"),save=document.getElementById("lotusLibrarySave");
     if(!drop||drop.dataset.ready==="1")return;
     drop.dataset.ready="1";
     drop.addEventListener("click",()=>input?.click());
-    input?.addEventListener("change",async()=>{await lotusLibraryAdd([...(input.files||[])]);input.value=""});
+    input?.addEventListener("change",()=>{stageLotusReferences(input.files||[]);input.value=""});
     drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("is-dragover")});
     drop.addEventListener("dragleave",()=>drop.classList.remove("is-dragover"));
-    drop.addEventListener("drop",async e=>{e.preventDefault();drop.classList.remove("is-dragover");await lotusLibraryAdd([...(e.dataTransfer?.files||[])])});
-    drop.addEventListener("paste",async e=>{const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith("image/"));if(files.length){e.preventDefault();await lotusLibraryAdd(files)}});
+    drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("is-dragover");stageLotusReferences(e.dataTransfer?.files||[])});
+    drop.addEventListener("paste",e=>{const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith("image/"));if(files.length){e.preventDefault();stageLotusReferences(files)}});
+    save?.addEventListener("click",async()=>{
+      const files=[...lotusPendingReferences.values()];
+      if(!files.length)return;
+      save.disabled=true;
+      try{
+        const ok=await lotusLibraryAdd(files);
+        if(ok){lotusPendingReferences.clear();renderPendingReferences();}
+      }catch(err){
+        console.error("Lotus Firebase upload :",err);
+        setStatus(`Envoi Firebase impossible : ${err?.message||"erreur inconnue"}`,"error");
+      }finally{
+        save.disabled=lotusPendingReferences.size===0;
+      }
+    });
+    renderPendingReferences();
     renderLotusLibrary();
   }
 
