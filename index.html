@@ -111,6 +111,12 @@
           <div class="lotus-body">
             <p class="lotus-help">Nom + screen de build. Tu peux coller une image directement avec <b>Ctrl+V</b> dans la case voulue.</p>
             <div id="lotusSlots" class="lotus-slots"></div>
+            <section class="lotus-library-box">
+              <div class="lotus-library-head"><strong>Ajouter des références à Lotus</strong><span id="lotusLibraryCount">0 planche ajoutée</span></div>
+              <p>Colle ou dépose ici une planche contenant les cartes que Lotus ne connaît pas. Elle sera gardée dans ton navigateur et utilisée aux prochaines analyses.</p>
+              <div id="lotusLibraryDrop" class="lotus-library-drop" tabindex="0">Ctrl+V ici ou cliquer / déposer une ou plusieurs images<input id="lotusLibraryFiles" type="file" accept="image/*" multiple hidden></div>
+              <div id="lotusLibraryList" class="lotus-library-list"></div>
+            </section>
             <button id="lotusAnalyze" class="admin-primary lotus-analyze" type="button">Analyser toute la configuration</button>
             <div id="lotusStatus" class="lotus-status" aria-live="polite"></div>
             <div id="lotusResults" class="lotus-results"></div>

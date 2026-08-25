@@ -21,7 +21,7 @@ function extractJson(text){
   const a=text.indexOf('{'),b=text.lastIndexOf('}'); if(a>=0&&b>a) text=text.slice(a,b+1);
   return JSON.parse(text);
 }
-async function analyzeSlot(slot){
+async function analyzeSlot(slot, customReferences=[]){
   const key=process.env.OPENAI_API_KEY; if(!key) throw new Error('Clé API absente : ouvre le fichier .env et colle ta clé après OPENAI_API_KEY=');
   const refs=[...(boards[slot.id]||[]),...arcaneBoards];
   const content=[
@@ -31,6 +31,9 @@ async function analyzeSlot(slot){
     {type:'input_text',text:'PLANCHES DE RÉFÉRENCE :'}
   ];
   for(const f of refs){content.push({type:'input_text',text:`Référence : ${f}`},{type:'input_image',image_url:imageData(f)})}
+  for(const ref of (customReferences||[]).slice(0,20)){
+    if(ref?.url || ref?.dataUrl) content.push({type:'input_text',text:`Référence ajoutée par l'utilisateur : ${ref.name||'planche personnalisée'}`},{type:'input_image',image_url:ref.url||ref.dataUrl});
+  }
   const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.LOTUS_MODEL||'gpt-5.6-luna',input:[{role:'user',content}],max_output_tokens:3500})});
   const data=await r.json(); if(!r.ok) throw new Error(data?.error?.message||`OpenAI HTTP ${r.status}`);
   const txt=data.output_text || (data.output||[]).flatMap(x=>x.content||[]).map(x=>x.text||'').join('');
@@ -52,8 +55,9 @@ module.exports = async function handler(req,res){
     const data = typeof req.body==='string' ? JSON.parse(req.body) : (req.body||{});
     const slots=(data.slots||[]).filter(s=>s?.image?.dataUrl);
     if(!slots.length) return res.status(400).json({error:'Aucun screen reçu.'});
+    const customReferences=(data.customReferences||[]).filter(r=>r?.url||r?.dataUrl);
     const results=[];
-    for(const slot of slots) results.push(await analyzeSlot(slot));
+    for(const slot of slots) results.push(await analyzeSlot(slot,customReferences));
     return res.status(200).json({results});
   }catch(e){
     console.error(e);

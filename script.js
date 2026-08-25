@@ -5307,18 +5307,12 @@ window.minchPreloadImage = minchPreloadImage;
 
   function autoGrowTextarea(el) {
     if (!el || el.tagName !== "TEXTAREA") return;
-    const host = getScrollHost(el);
-    const hostScroll = host === document.scrollingElement || host === document.documentElement ? window.scrollY : host.scrollTop;
-    const pageScroll = window.scrollY;
     const minHeight = el.closest("#adminEditorModal") ? 180 : 150;
+    // V33 : aucun window.scrollTo / scrollTop ici. Ces restaurations provoquaient
+    // les petits retours en arrière aléatoires pendant le scroll de l'éditeur.
     const wanted = Math.max(minHeight, el.scrollHeight + 2);
     const current = Math.round(el.getBoundingClientRect().height);
-    if (Math.abs(current - wanted) < 2) return;
-    el.style.height = wanted + "px";
-    requestAnimationFrame(() => {
-      if (host === document.scrollingElement || host === document.documentElement) window.scrollTo({top: pageScroll, left: window.scrollX, behavior: "instant"});
-      else host.scrollTop = hostScroll;
-    });
+    if (Math.abs(current - wanted) >= 2) el.style.height = wanted + "px";
   }
 
   function growAll(root = document) {
@@ -5422,6 +5416,79 @@ window.minchPreloadImage = minchPreloadImage;
     { id:"armeCompagnon", label:"Arme du compagnon" }
   ];
   const lotusImages = new Map();
+  const LOTUS_FIREBASE_LIBRARY_COLLECTION = "lotus_reference_boards";
+
+  async function lotusLibraryAll(){
+    if(!initMinchFirebase() || !firebaseDb) return [];
+    try{
+      const snap=await firebaseDb.collection(LOTUS_FIREBASE_LIBRARY_COLLECTION).orderBy("createdAt","asc").get();
+      return snap.docs.map(d=>({id:d.id,...d.data()}));
+    }catch(err){
+      console.error("Lotus bibliothèque Firebase :",err);
+      return [];
+    }
+  }
+
+  async function lotusLibraryAdd(files){
+    if(!initMinchFirebase() || !firebaseDb || !firebaseStorage){
+      setStatus("Firebase indisponible : impossible d’enregistrer la planche Lotus.","error");
+      return;
+    }
+    setStatus("Ajout des références dans Firebase…");
+    for(const file of files){
+      if(!file?.type?.startsWith("image/")) continue;
+      const id=(crypto.randomUUID?.()||Date.now()+"_"+Math.random().toString(36).slice(2));
+      const safeName=(file.name||"planche.png").replace(/[^a-zA-Z0-9._-]+/g,"_");
+      const storagePath=`lotus-reference-boards/${id}_${safeName}`;
+      const ref=firebaseStorage.ref().child(storagePath);
+      await ref.put(file,{contentType:file.type||"image/png"});
+      const url=await ref.getDownloadURL();
+      await firebaseDb.collection(LOTUS_FIREBASE_LIBRARY_COLLECTION).doc(id).set({
+        name:file.name||"planche.png",url,storagePath,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    await renderLotusLibrary();
+    setStatus("Référence Lotus enregistrée dans Firebase.","ok");
+  }
+
+  async function lotusLibraryRemove(id){
+    if(!initMinchFirebase() || !firebaseDb) return;
+    const docRef=firebaseDb.collection(LOTUS_FIREBASE_LIBRARY_COLLECTION).doc(id);
+    try{
+      const snap=await docRef.get();
+      const data=snap.exists?snap.data():null;
+      if(data?.storagePath && firebaseStorage){
+        try{await firebaseStorage.ref().child(data.storagePath).delete()}catch(err){console.warn("Image Lotus déjà absente :",err)}
+      }
+      await docRef.delete();
+      await renderLotusLibrary();
+    }catch(err){
+      console.error("Suppression référence Lotus :",err);
+      setStatus("Impossible de supprimer cette référence Lotus.","error");
+    }
+  }
+
+  async function renderLotusLibrary(){
+    const list=document.getElementById("lotusLibraryList"),count=document.getElementById("lotusLibraryCount");
+    if(!list)return;
+    const items=await lotusLibraryAll();
+    if(count)count.textContent=`${items.length} planche${items.length>1?"s":""} enregistrée${items.length>1?"s":""} dans Firebase`;
+    list.innerHTML=items.map(x=>`<div class="lotus-library-item"><span>${lotusEsc(x.name)}</span><button type="button" class="lotus-library-remove" data-library-remove="${lotusEsc(x.id)}">Retirer</button></div>`).join("");
+    list.querySelectorAll("[data-library-remove]").forEach(b=>b.addEventListener("click",()=>lotusLibraryRemove(b.dataset.libraryRemove)));
+  }
+
+  function initLotusLibrary(){
+    const drop=document.getElementById("lotusLibraryDrop"),input=document.getElementById("lotusLibraryFiles");
+    if(!drop||drop.dataset.ready==="1")return;
+    drop.dataset.ready="1";
+    drop.addEventListener("click",()=>input?.click());
+    input?.addEventListener("change",async()=>{await lotusLibraryAdd([...(input.files||[])]);input.value=""});
+    drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("is-dragover")});
+    drop.addEventListener("dragleave",()=>drop.classList.remove("is-dragover"));
+    drop.addEventListener("drop",async e=>{e.preventDefault();drop.classList.remove("is-dragover");await lotusLibraryAdd([...(e.dataTransfer?.files||[])])});
+    drop.addEventListener("paste",async e=>{const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith("image/"));if(files.length){e.preventDefault();await lotusLibraryAdd(files)}});
+    renderLotusLibrary();
+  }
 
   function lotusEsc(v){
     return String(v ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -5559,7 +5626,8 @@ window.minchPreloadImage = minchPreloadImage;
         if(btn) btn.textContent=`Analyse ${i+1}/${slots.length}…`;
         try{
           const item={id:s.id,label:s.label,name:s.name,image:await lotusFilePayload(s.file)};
-          const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:[item]})});
+          const customReferences=(await lotusLibraryAll().catch(()=>[])).map(x=>({name:x.name,url:x.url})).filter(x=>x.url);
+          const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slots:[item],customReferences})});
           if(!response.ok){
             const errData=await response.json().catch(()=>({}));
             if(response.status===404) throw new Error("LOTUS_BACKEND_MISSING");
@@ -5591,6 +5659,7 @@ window.minchPreloadImage = minchPreloadImage;
     if(!document.getElementById("lotusPanel") || document.getElementById("lotusPanel").dataset.ready==="1")return;
     document.getElementById("lotusPanel").dataset.ready="1";
     renderSlots();
+    initLotusLibrary();
     document.getElementById("lotusAnalyze")?.addEventListener("click",analyzeLotus);
   }
   const obs=new MutationObserver(()=>{

@@ -3893,3 +3893,15 @@ body.build-open .buildpage::-webkit-scrollbar-track,
 .lotus-simple-head{padding:16px 16px 12px;border-bottom:1px solid rgba(125,211,252,.14);display:flex;align-items:baseline;gap:9px;background:rgba(7,17,31,.72);border-radius:20px 20px 0 0}
 .lotus-simple-head strong{font-size:22px;line-height:1;color:#fff}
 .lotus-simple-head span{font-size:11px;opacity:.62;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+
+
+/* V33 — éditeur stable : un seul conteneur de scroll + bibliothèque Lotus locale */
+#adminEditorModal, #adminEditorModal * { overflow-anchor: none !important; }
+#adminEditorModal .admin-editor-card { scroll-behavior: auto !important; overscroll-behavior: contain; }
+#adminEditorModal .lotus-panel { position:relative !important; top:auto !important; max-height:none !important; overflow:visible !important; }
+.lotus-library-box{margin-top:14px;padding:11px;border:1px solid rgba(167,139,250,.2);border-radius:14px;background:rgba(139,92,246,.045)}
+.lotus-library-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}.lotus-library-head strong{font-size:13px}.lotus-library-head span{font-size:10px;opacity:.65}
+.lotus-library-box p{margin:0 0 9px;font-size:11px;line-height:1.45;opacity:.68}
+.lotus-library-drop{min-height:70px;border:1px dashed rgba(196,181,253,.36);border-radius:11px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;cursor:pointer;font-size:11px;opacity:.8;background:rgba(139,92,246,.035)}
+.lotus-library-drop:hover,.lotus-library-drop.is-dragover,.lotus-library-drop:focus{border-color:rgba(196,181,253,.8);background:rgba(139,92,246,.09);outline:none}
+.lotus-library-list{display:flex;flex-direction:column;gap:5px;margin-top:8px}.lotus-library-item{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:10px;padding:5px 7px;border-radius:8px;background:rgba(255,255,255,.04)}.lotus-library-remove{border:0;background:transparent;color:#fca5a5;cursor:pointer}
