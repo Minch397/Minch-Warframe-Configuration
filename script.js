@@ -5913,3 +5913,54 @@ window.minchPreloadImage = minchPreloadImage;
     }
   },true);
 })();
+
+/* ============================================================
+   V40 — Ctrl+V Lotus : même logique directe que l'éditeur principal
+   Le slot est résolu au moment exact du collage depuis la position souris.
+   ============================================================ */
+(function(){
+  'use strict';
+  let mouseX = -1, mouseY = -1;
+
+  document.addEventListener('pointermove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  }, {capture:true, passive:true});
+
+  function imageFromPaste(e){
+    const cd = e.clipboardData;
+    if(!cd) return null;
+    for(const item of Array.from(cd.items || [])){
+      if(item.kind === 'file' && item.type && item.type.startsWith('image/')){
+        const file = item.getAsFile();
+        if(file) return file;
+      }
+    }
+    return Array.from(cd.files || []).find(file => file && file.type && file.type.startsWith('image/')) || null;
+  }
+
+  function lotusUnderMouse(){
+    if(mouseX < 0 || mouseY < 0) return null;
+    const el = document.elementFromPoint(mouseX, mouseY);
+    return el?.closest?.('.lotus-dropzone[data-slot]') || null;
+  }
+
+  document.addEventListener('paste', (e) => {
+    const file = imageFromPaste(e);
+    if(!file) return;
+
+    // Priorité au slot Lotus réellement sous la souris au moment du Ctrl+V.
+    // Aucun clic/focus n'est nécessaire.
+    const zone = lotusUnderMouse() || document.activeElement?.closest?.('.lotus-dropzone[data-slot]');
+    if(!zone) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try {
+      setLotusImage(zone.dataset.slot, file);
+      zone.classList.add('is-hovered');
+    } catch(err) {
+      console.error('Lotus collage V40 :', err);
+    }
+  }, true);
+})();
