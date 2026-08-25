@@ -3963,3 +3963,39 @@ body.build-open .buildpage::-webkit-scrollbar-track,
   transition: none !important;
   animation: none !important;
 }
+
+/* =========================================================
+   V38 — Lotus indépendante + survol de collage
+   ========================================================= */
+#adminEditorModal .admin-editor-card{
+  overflow:hidden!important;
+}
+#adminEditorModal .admin-editor-layout{
+  height:calc(94vh - 36px)!important;
+  min-height:0!important;
+  align-items:stretch!important;
+}
+#adminEditorModal .admin-editor-main{
+  min-height:0!important;
+  height:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  scrollbar-width:none!important;
+}
+#adminEditorModal .admin-editor-main::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+#adminEditorModal .lotus-panel{
+  position:relative!important;
+  top:auto!important;
+  height:100%!important;
+  max-height:none!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+}
+.lotus-dropzone.is-hovered{
+  border-color:rgba(125,211,252,.95)!important;
+  background:rgba(56,189,248,.14)!important;
+  box-shadow:0 0 22px rgba(56,189,248,.16)!important;
+}

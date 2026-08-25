@@ -5742,3 +5742,111 @@ window.minchPreloadImage = minchPreloadImage;
     mo.observe(modal,{childList:true,subtree:true});
   }
 })();
+
+/* =========================================================
+   V38 — collage Lotus au survol + IDs stricts + suppression unitaire
+   ========================================================= */
+(() => {
+  "use strict";
+  let hoveredLotusSlot = null;
+
+  function imageFromClipboard(e){
+    return [...(e.clipboardData?.files || [])].find(f => f && f.type && f.type.startsWith("image/")) || null;
+  }
+
+  function bindLotusHoverPaste(){
+    document.querySelectorAll('.lotus-dropzone[data-slot]').forEach(zone => {
+      if (zone.dataset.v38HoverPaste === '1') return;
+      zone.dataset.v38HoverPaste = '1';
+      const slot = zone.dataset.slot;
+      zone.addEventListener('mouseenter', () => { hoveredLotusSlot = slot; zone.classList.add('is-hovered'); });
+      zone.addEventListener('mouseleave', () => { if (hoveredLotusSlot === slot) hoveredLotusSlot = null; zone.classList.remove('is-hovered'); });
+    });
+  }
+
+  // Ctrl+V fonctionne dès que la souris survole une case Lotus : aucun clic/focus requis.
+  document.addEventListener('paste', (e) => {
+    if (!hoveredLotusSlot) return;
+    const modal = document.getElementById('adminEditorModal');
+    if (!modal?.classList.contains('open')) return;
+    const file = imageFromClipboard(e);
+    if (!file) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try { setLotusImage(hoveredLotusSlot, file); } catch(err) { console.error('Lotus collage V38 :', err); }
+  }, true);
+
+  const observer = new MutationObserver(() => bindLotusHoverPaste());
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { bindLotusHoverPaste(); observer.observe(document.body,{childList:true,subtree:true}); }, {once:true});
+  } else {
+    bindLotusHoverPaste(); observer.observe(document.body,{childList:true,subtree:true});
+  }
+
+  function makeV38Id(item){
+    let base = 'config';
+    try { base = slugifyText(item?.name || 'config') || 'config'; } catch(e) {}
+    return `${base}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,9)}`;
+  }
+
+  function ensureStrictIds(){
+    const data = window.warframesData || (typeof warframesData !== 'undefined' ? warframesData : []);
+    const used = new Set();
+    data.forEach(item => {
+      if (!item._id || used.has(item._id)) item._id = makeV38Id(item);
+      used.add(item._id);
+    });
+  }
+
+  // Supprime UNIQUEMENT la configuration ouverte grâce à son ID, jamais toutes celles ayant le même nom.
+  function v38DeleteCurrentWarframe(){
+    const current = window.currentOpenWarframe;
+    if (!current) return;
+    ensureStrictIds();
+    const id = current._id;
+    if (!id) return;
+    if (!confirm(`Supprimer ${current.name} ?`)) return;
+    const data = window.warframesData || warframesData;
+    const index = data.findIndex(w => w._id === id);
+    if (index < 0) return;
+    data.splice(index, 1);
+    if (typeof warframesData !== 'undefined') warframesData = data;
+    window.warframesData = data;
+    window.currentOpenWarframe = null;
+    try { closeBuild(); } catch(e) {}
+    try { refreshAfterAdminChange(); } catch(e) {
+      try { localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(data)); } catch(_) {}
+      try { saveFirebaseAdminData(); } catch(_) {}
+      try { renderGrid(); } catch(_) {}
+    }
+  }
+
+  // Dupliquer reste la seule action qui crée volontairement une nouvelle configuration.
+  function v38DuplicateCurrentWarframe(){
+    const current = window.currentOpenWarframe;
+    if (!current) return;
+    ensureStrictIds();
+    const data = window.warframesData || warframesData;
+    const copy = deepClone(current);
+    copy._id = makeV38Id(copy);
+    const base = String(current.name || 'Configuration').replace(/ Copie(?: \d+)?$/, '');
+    const names = new Set(data.map(w => w.name));
+    let name = `${base} Copie`, n = 2;
+    while (names.has(name)) name = `${base} Copie ${n++}`;
+    copy.name = name;
+    copy._updatedAt = Date.now();
+    if (copy.builds?.[0]) copy.builds[0].name = `${name} Configuration`;
+    data.push(copy);
+    window.warframesData = data;
+    if (typeof warframesData !== 'undefined') warframesData = data;
+    window.currentOpenWarframe = copy;
+    refreshAfterAdminChange();
+    if (typeof fillBuildContent === 'function' && document.body.classList.contains('build-open')) fillBuildContent(copy);
+  }
+
+  window.deleteCurrentWarframe = v38DeleteCurrentWarframe;
+  window.duplicateCurrentWarframe = v38DuplicateCurrentWarframe;
+  try { deleteCurrentWarframe = v38DeleteCurrentWarframe; } catch(e) {}
+  try { duplicateCurrentWarframe = v38DuplicateCurrentWarframe; } catch(e) {}
+  ensureStrictIds();
+})();
