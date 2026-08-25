@@ -5765,7 +5765,7 @@ window.minchPreloadImage = minchPreloadImage;
   }
 
   // Ctrl+V fonctionne dès que la souris survole une case Lotus : aucun clic/focus requis.
-  document.addEventListener('paste', (e) => {
+  document.addEventListener('v38-paste-disabled', (e) => {
     if (!hoveredLotusSlot) return;
     const modal = document.getElementById('adminEditorModal');
     if (!modal?.classList.contains('open')) return;
@@ -5849,4 +5849,67 @@ window.minchPreloadImage = minchPreloadImage;
   try { deleteCurrentWarframe = v38DeleteCurrentWarframe; } catch(e) {}
   try { duplicateCurrentWarframe = v38DuplicateCurrentWarframe; } catch(e) {}
   ensureStrictIds();
+})();
+
+/* ============================================================
+   V39 — Ctrl+V robuste Lotus + zones images de l'éditeur
+   ============================================================ */
+(function(){
+  'use strict';
+  let pasteTarget = null;
+
+  function clipboardImage(e){
+    const cd=e.clipboardData;
+    if(!cd) return null;
+    for(const item of [...(cd.items||[])]){
+      if(item.kind==='file' && item.type && item.type.startsWith('image/')){
+        const f=item.getAsFile(); if(f) return f;
+      }
+    }
+    return [...(cd.files||[])].find(f=>f?.type?.startsWith('image/')) || null;
+  }
+
+  function putFileInInput(input,file){
+    if(!input||!file) return;
+    try{
+      const dt=new DataTransfer(); dt.items.add(file); input.files=dt.files;
+    }catch(_){ return; }
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+
+  function previewMainZone(row,file){
+    if(!row||!file) return;
+    let p=row.querySelector('.minch-file-preview');
+    if(!p){p=document.createElement('div');p.className='minch-file-preview';row.appendChild(p)}
+    const u=URL.createObjectURL(file);
+    p.innerHTML=`<img src="${u}" alt="Aperçu"><div class="minch-zone-file"></div><div class="minch-zone-subtitle">Image collée — Ctrl+V pour remplacer</div>`;
+    const n=p.querySelector('.minch-zone-file'); if(n)n.textContent=file.name||'Image du presse-papiers';
+  }
+
+  // Le ciblage suit réellement ce qui est sous la souris, sans exiger de focus/clic.
+  document.addEventListener('pointerover',e=>{
+    const lotus=e.target.closest?.('.lotus-dropzone[data-slot]');
+    if(lotus){ pasteTarget={type:'lotus',el:lotus,id:lotus.dataset.slot}; return; }
+    const row=e.target.closest?.('#adminEditorModal .admin-file-row, #adminEditorModal .minch-image-zone');
+    if(row){ const input=row.querySelector('input[type="file"][accept*="image"]'); if(input) pasteTarget={type:'main',el:row,input}; }
+  },true);
+  document.addEventListener('pointerout',e=>{
+    if(!pasteTarget?.el) return;
+    const to=e.relatedTarget;
+    if(to && pasteTarget.el.contains(to)) return;
+    if(pasteTarget.el===e.target || pasteTarget.el.contains(e.target)) pasteTarget=null;
+  },true);
+
+  document.addEventListener('paste',e=>{
+    const modal=document.getElementById('adminEditorModal');
+    if(!modal?.classList.contains('open') || !pasteTarget) return;
+    const file=clipboardImage(e); if(!file) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if(pasteTarget.type==='lotus'){
+      try{ setLotusImage(pasteTarget.id,file); }catch(err){console.error('Lotus collage V39',err)}
+    }else{
+      putFileInInput(pasteTarget.input,file);
+      previewMainZone(pasteTarget.el,file);
+    }
+  },true);
 })();
