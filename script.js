@@ -5296,43 +5296,23 @@ window.minchPreloadImage = minchPreloadImage;
 
 
 /* =========================================================
-   V24 — textarea auto-extensibles + sauvegarde globale fiable
+   V36 — textarea fixes (7 lignes) + sauvegarde globale fiable
    ========================================================= */
 (() => {
   "use strict";
 
-  function getScrollHost(el) {
-    return el?.closest?.("#buildPage, #adminEditorModal, .hub-editor-overlay") || document.scrollingElement || document.documentElement;
-  }
-
-  function autoGrowTextarea(el) {
-    if (!el || el.tagName !== "TEXTAREA") return;
-    const minHeight = el.closest("#adminEditorModal") ? 180 : 150;
-    const maxHeight = el.closest("#adminEditorModal") ? 520 : 420;
-    // V35 : on redimensionne UNIQUEMENT le champ en cours de saisie.
-    // Aucun recalcul global : cela évite les sauts de page pendant que Lotus ou l'éditeur changent le DOM.
-    el.style.height = "auto";
-    const wanted = Math.min(maxHeight, Math.max(minHeight, el.scrollHeight + 2));
-    el.style.height = wanted + "px";
-    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
-  }
-
+  // V36 : aucune auto-extension. Les champs d'édition gardent une hauteur fixe
+  // d'environ 7 lignes et possèdent leur propre scroll si le texte est plus long.
   function prepareTextarea(el) {
-    if (!el || el.tagName !== "TEXTAREA" || el.dataset.v35Prepared === "1") return;
-    el.dataset.v35Prepared = "1";
-    // Hauteur de départ stable. Le champ grandit ensuite seulement quand l'utilisateur écrit.
-    el.style.height = (el.closest("#adminEditorModal") ? 180 : 150) + "px";
+    if (!el || el.tagName !== "TEXTAREA") return;
+    el.rows = 7;
+    el.style.height = "";
+    el.style.minHeight = "";
+    el.style.maxHeight = "";
     el.style.overflowY = "auto";
+    el.style.resize = "none";
   }
 
-  document.addEventListener("input", (event) => {
-    const el = event.target;
-    if (el && el.matches?.("#adminEditorModal textarea, .hub-editor-overlay textarea")) {
-      autoGrowTextarea(el);
-    }
-  }, true);
-
-  // Les formulaires admin sont injectés dynamiquement : on redimensionne dès leur apparition.
   const observer = new MutationObserver((mutations) => {
     const added = [];
     for (const mutation of mutations) {
@@ -5342,7 +5322,7 @@ window.minchPreloadImage = minchPreloadImage;
         node.querySelectorAll?.("#adminEditorModal textarea, .hub-editor-overlay textarea").forEach(el => added.push(el));
       }
     }
-    if (added.length) requestAnimationFrame(() => [...new Set(added)].forEach(prepareTextarea));
+    if (added.length) [...new Set(added)].forEach(prepareTextarea);
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 

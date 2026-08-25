@@ -3919,13 +3919,14 @@ body.build-open .buildpage::-webkit-scrollbar-track,
   scroll-behavior: auto !important;
 }
 
-/* Les textarea restent raisonnables au chargement, puis grandissent uniquement pendant la saisie. */
+/* V36 : zones de texte fixes, environ 7 lignes. Aucune auto-extension. */
 #adminEditorModal textarea,
 #adminEditorModal .admin-textarea,
 .hub-editor-overlay textarea,
 .hub-editor-overlay .admin-textarea {
-  min-height: 150px !important;
-  max-height: 520px !important;
+  height: 168px !important;
+  min-height: 168px !important;
+  max-height: 168px !important;
   overflow-y: auto !important;
   resize: none !important;
 }
