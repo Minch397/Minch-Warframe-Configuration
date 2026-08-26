@@ -3963,20 +3963,28 @@ window.minchPreloadImage = minchPreloadImage;
     await (saveQueue = saveQueue.catch(() => {}).then(async () => {
       ensureAllIds();
 
-      const originalId = modal.dataset.minchEditingId || "";
+      // V44 : une édition existante est verrouillée sur son ID exact.
+      // On ne retombe jamais sur le nom (deux configs peuvent avoir le même nom).
+      const currentId = window.currentOpenWarframe && window.currentOpenWarframe._id ? window.currentOpenWarframe._id : "";
+      const originalId = modal.dataset.minchEditingId || currentId || "";
       const originalName = modal.dataset.minchEditingName || "";
+      const isExplicitNew = !originalId && !currentId;
       // V30 : recharge la dernière copie Firebase avant la sauvegarde pour préserver les images/références existantes.
       let remoteData = null;
       try { remoteData = await loadFirebaseAdminData(); } catch(e) { console.warn("Firebase avant sauvegarde :", e); }
       if (Array.isArray(remoteData) && remoteData.length) {
-        const remoteMatch = remoteData.find(w => (originalId && w._id === originalId) || (originalName && w.name === originalName));
+        const remoteMatch = originalId ? remoteData.find(w => w && w._id === originalId) : null;
         if (remoteMatch) {
-          const localIndex = (warframesData || []).findIndex(w => (originalId && w._id === originalId) || (originalName && w.name === originalName));
+          const localIndex = (warframesData || []).findIndex(w => w && w._id === originalId);
           if (localIndex >= 0) warframesData[localIndex] = deepClone(remoteMatch);
         }
       }
-      const existing = (warframesData || []).find(w => (originalId && w._id === originalId) || (!originalId && originalName && w.name === originalName));
-      const editing = existing ? deepClone(existing) : { _id: originalId || makeStableId(getValue("editWarframeName")), name:"", builds:[{}] };
+      let existing = originalId ? (warframesData || []).find(w => w && w._id === originalId) : null;
+      // Si Firebase avait la bonne config mais que la copie locale est désynchronisée, on repart de Firebase.
+      if (!existing && Array.isArray(remoteData) && originalId) existing = remoteData.find(w => w && w._id === originalId) || null;
+      // Une config existante ne doit JAMAIS devenir une nouvelle config silencieusement.
+      if (originalId && !existing) throw new Error("Configuration d'origine introuvable (ID : " + originalId + "). Sauvegarde annulée pour éviter un doublon.");
+      const editing = existing ? deepClone(existing) : { _id: makeStableId(getValue("editWarframeName")), name:"", builds:[{}] };
       if (!editing._id) editing._id = makeStableId(editing.name || getValue("editWarframeName"));
       modal.dataset.minchEditingId = editing._id;
 
@@ -4013,10 +4021,15 @@ window.minchPreloadImage = minchPreloadImage;
         if (url) applyUrl(url);
       }
 
-      let index = warframesData.findIndex(w => w._id && w._id === editing._id);
-      if (index < 0 && originalName) index = warframesData.findIndex(w => w.name === originalName);
-      if (index >= 0) warframesData[index] = editing;
-      else warframesData.push(editing);
+      const index = warframesData.findIndex(w => w && w._id === editing._id);
+      if (index >= 0) {
+        warframesData[index] = editing;
+      } else if (isExplicitNew) {
+        // Seul l'éditeur ouvert en mode "nouvelle configuration" peut créer une entrée.
+        warframesData.push(editing);
+      } else {
+        throw new Error("ID de configuration perdu pendant la sauvegarde. Création d'un doublon bloquée.");
+      }
 
       ensureAllIds();
       window.currentOpenWarframe = editing;
