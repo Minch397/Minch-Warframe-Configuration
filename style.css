@@ -3999,3 +3999,16 @@ body.build-open .buildpage::-webkit-scrollbar-track,
   background:rgba(56,189,248,.14)!important;
   box-shadow:0 0 22px rgba(56,189,248,.16)!important;
 }
+
+/* V43 - textes globaux modifiables en mode admin (Ctrl+clic) */
+.site-text-admin-editable {
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+  transition: outline-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.site-text-admin-editable:hover {
+  outline-color: rgba(255,255,255,.38);
+  background-color: rgba(255,255,255,.045);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.025);
+  cursor: text;
+}

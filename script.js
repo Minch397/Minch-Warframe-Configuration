@@ -5938,3 +5938,82 @@ window.minchPreloadImage = minchPreloadImage;
     }
   }, true);
 })();
+
+/* ---------- V43 : TEXTES GLOBAUX EDITABLES EN ADMIN ---------- */
+(() => {
+  const FIELD = 'siteTextOverrides';
+  let overrides = {};
+  const selector = 'h1,h2,h3,h4,p,span,label,button,a,li';
+  const excluded = '.admin-modal,.admin-floating-bar,.lotus-panel,.lotus-sidebar,.build-editor,.home-text-edit-btn,.home-text-add-btn';
+
+  function cssKey(el){
+    const parts=[]; let n=el;
+    while(n && n!==document.body){
+      let part=n.tagName.toLowerCase();
+      if(n.id){ part += '#'+n.id; parts.unshift(part); break; }
+      const parent=n.parentElement;
+      if(parent){
+        const same=[...parent.children].filter(x=>x.tagName===n.tagName);
+        if(same.length>1) part += `:nth-of-type(${same.indexOf(n)+1})`;
+      }
+      parts.unshift(part); n=parent;
+    }
+    return parts.join('>');
+  }
+  function eligible(el){
+    if(!el || !el.matches || !el.matches(selector)) return false;
+    if(el.closest(excluded)) return false;
+    if(el.children.length && !['BUTTON','A'].includes(el.tagName)) return false;
+    const t=(el.textContent||'').trim();
+    return !!t && t.length < 500;
+  }
+  function keyFor(el){ return 'txt:'+cssKey(el); }
+  function apply(){
+    document.querySelectorAll(selector).forEach(el=>{
+      if(!eligible(el)) return;
+      const key=keyFor(el);
+      if(Object.prototype.hasOwnProperty.call(overrides,key)) el.textContent=overrides[key];
+      el.classList.toggle('site-text-admin-editable', !!window.isAdminMode);
+      if(window.isAdminMode) el.title='Ctrl + clic pour modifier ce texte';
+      else if(el.title==='Ctrl + clic pour modifier ce texte') el.removeAttribute('title');
+    });
+  }
+  async function load(){
+    if(!initMinchFirebase() || !firebaseDb){ apply(); return; }
+    try{
+      const doc=await firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT).get();
+      overrides=(doc.exists && doc.data() && doc.data()[FIELD]) || {};
+    }catch(e){ console.error('Chargement textes du site impossible :',e); }
+    apply();
+  }
+  async function save(){
+    if(!initMinchFirebase() || !firebaseDb) return false;
+    try{
+      await firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT).set({
+        [FIELD]:overrides,
+        siteTextUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+      return true;
+    }catch(e){ console.error('Sauvegarde texte du site impossible :',e); return false; }
+  }
+  document.addEventListener('click', async e=>{
+    if(!window.isAdminMode || !e.ctrlKey) return;
+    const el=e.target.closest(selector);
+    if(!eligible(el)) return;
+    e.preventDefault(); e.stopPropagation();
+    const old=(el.textContent||'').trim();
+    const next=prompt('Modifier ce texte :',old);
+    if(next===null) return;
+    const value=next.trim();
+    if(!value) return;
+    overrides[keyFor(el)]=value;
+    el.textContent=value;
+    await save();
+  },true);
+  const obs=new MutationObserver(()=>requestAnimationFrame(apply));
+  window.addEventListener('load',()=>{
+    load();
+    obs.observe(document.body,{childList:true,subtree:true});
+    setInterval(apply,1500);
+  });
+})();
