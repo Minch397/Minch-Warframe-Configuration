@@ -5952,12 +5952,30 @@ window.minchPreloadImage = minchPreloadImage;
   }, true);
 })();
 
-/* ---------- V43 : TEXTES GLOBAUX EDITABLES EN ADMIN ---------- */
+/* ---------- V45 : TEXTES GLOBAUX EDITABLES EN ADMIN — VERSION SÉCURISÉE ---------- */
 (() => {
   const FIELD = 'siteTextOverrides';
   let overrides = {};
   const selector = 'h1,h2,h3,h4,p,span,label,button,a,li';
-  const excluded = '.admin-modal,.admin-floating-bar,.lotus-panel,.lotus-sidebar,.build-editor,.home-text-edit-btn,.home-text-add-btn';
+
+  // Ces zones ont déjà leur propre système d'édition ou contiennent des libellés
+  // techniques répétés. Elles ne doivent jamais être modifiées par l'éditeur global.
+  const excluded = [
+    '.admin-modal',
+    '.admin-floating-bar',
+    '.lotus-panel',
+    '.lotus-sidebar',
+    '.build-editor',
+    '.home-text-edit-btn',
+    '.home-text-add-btn',
+    '#buildContent',
+    '#warframeGrid',
+    '#recentUpdatesGrid',
+    '.card',
+    '.weapon-section',
+    '.companion-section',
+    '.minch-details-overlay'
+  ].join(',');
 
   function cssKey(el){
     const parts=[]; let n=el;
@@ -5973,6 +5991,7 @@ window.minchPreloadImage = minchPreloadImage;
     }
     return parts.join('>');
   }
+
   function eligible(el){
     if(!el || !el.matches || !el.matches(selector)) return false;
     if(el.closest(excluded)) return false;
@@ -5980,25 +5999,59 @@ window.minchPreloadImage = minchPreloadImage;
     const t=(el.textContent||'').trim();
     return !!t && t.length < 500;
   }
+
   function keyFor(el){ return 'txt:'+cssKey(el); }
+
   function apply(){
     document.querySelectorAll(selector).forEach(el=>{
-      if(!eligible(el)) return;
+      if(!eligible(el)){
+        el.classList.remove('site-text-admin-editable');
+        if(el.title==='Ctrl + clic pour modifier ce texte') el.removeAttribute('title');
+        return;
+      }
       const key=keyFor(el);
-      if(Object.prototype.hasOwnProperty.call(overrides,key)) el.textContent=overrides[key];
+      if(Object.prototype.hasOwnProperty.call(overrides,key)){
+        const wanted=String(overrides[key] ?? '');
+        // Important : ne touche au DOM que si le texte est réellement différent.
+        // Cela évite la boucle MutationObserver qui pouvait faire buguer la page.
+        if(el.textContent !== wanted) el.textContent=wanted;
+      }
       el.classList.toggle('site-text-admin-editable', !!window.isAdminMode);
       if(window.isAdminMode) el.title='Ctrl + clic pour modifier ce texte';
       else if(el.title==='Ctrl + clic pour modifier ce texte') el.removeAttribute('title');
     });
   }
+
+  function cleanCorruptedOverrides(){
+    let changed=false;
+    Object.keys(overrides).forEach(key=>{
+      const value=String(overrides[key] ?? '').trim();
+      // Migration V45 : supprime le test accidentel « Configuration Q ».
+      if(/^configuration\s*q$/i.test(value)){
+        delete overrides[key];
+        changed=true;
+      }
+    });
+    return changed;
+  }
+
   async function load(){
     if(!initMinchFirebase() || !firebaseDb){ apply(); return; }
+    let cleaned=false;
     try{
       const doc=await firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT).get();
       overrides=(doc.exists && doc.data() && doc.data()[FIELD]) || {};
+      cleaned=cleanCorruptedOverrides();
+      if(cleaned){
+        await firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT).set({
+          [FIELD]:overrides,
+          siteTextUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        },{merge:true});
+      }
     }catch(e){ console.error('Chargement textes du site impossible :',e); }
     apply();
   }
+
   async function save(){
     if(!initMinchFirebase() || !firebaseDb) return false;
     try{
@@ -6009,6 +6062,7 @@ window.minchPreloadImage = minchPreloadImage;
       return true;
     }catch(e){ console.error('Sauvegarde texte du site impossible :',e); return false; }
   }
+
   document.addEventListener('click', async e=>{
     if(!window.isAdminMode || !e.ctrlKey) return;
     const el=e.target.closest(selector);
@@ -6020,13 +6074,22 @@ window.minchPreloadImage = minchPreloadImage;
     const value=next.trim();
     if(!value) return;
     overrides[keyFor(el)]=value;
-    el.textContent=value;
+    if(el.textContent !== value) el.textContent=value;
     await save();
   },true);
-  const obs=new MutationObserver(()=>requestAnimationFrame(apply));
+
+  let applyQueued=false;
+  const obs=new MutationObserver(()=>{
+    if(applyQueued) return;
+    applyQueued=true;
+    requestAnimationFrame(()=>{
+      applyQueued=false;
+      apply();
+    });
+  });
+
   window.addEventListener('load',()=>{
     load();
     obs.observe(document.body,{childList:true,subtree:true});
-    setInterval(apply,1500);
   });
 })();
