@@ -4091,8 +4091,28 @@ window.minchPreloadImage = minchPreloadImage;
       // V44 : une édition existante est verrouillée sur son ID exact.
       // On ne retombe jamais sur le nom (deux configs peuvent avoir le même nom).
       // V46 : l'identité vient UNIQUEMENT de la session d'éditeur ouverte.
-      const originalId = modal.dataset.minchEditingId || "";
-      const originalName = modal.dataset.minchEditingName || "";
+      // V51 : l'ID reste automatique. Si une ancienne ouverture n'a pas transmis
+      // l'ID au modal, on le retrouve UNIQUEMENT parmi les configurations existantes
+      // à partir du nom affiché dans l'éditeur. Un seul résultat est accepté.
+      let originalId = modal.dataset.minchEditingId || "";
+      let originalName = modal.dataset.minchEditingName || "";
+      const formOriginalName = (getValue("editWarframeName") || "").trim();
+      if (!originalName && formOriginalName) originalName = formOriginalName;
+
+      if (!originalId && modal.dataset.minchIsNew !== "1") {
+        const currentId = window.currentOpenWarframe && window.currentOpenWarframe._id ? window.currentOpenWarframe._id : "";
+        if (currentId && (warframesData || []).some(w => w && w._id === currentId)) {
+          originalId = currentId;
+        } else if (originalName) {
+          const matches = (warframesData || []).filter(w => w && String(w.name || "").trim() === originalName);
+          if (matches.length === 1) originalId = matches[0]._id || "";
+          else if (matches.length > 1) throw new Error(`Plusieurs configurations portent le nom « ${originalName} ». Sauvegarde bloquée pour éviter de modifier la mauvaise.`);
+        }
+        if (originalId) {
+          modal.dataset.minchEditingId = originalId;
+          modal.dataset.minchEditingName = originalName;
+        }
+      }
       // V49 : certaines ouvertures de l’éditeur passent encore par l’ancien handler
       // et n’avaient donc pas reçu de token de session. On initialise ce token ici
       // au lieu de bloquer une sauvegarde parfaitement légitime.
@@ -4102,7 +4122,7 @@ window.minchPreloadImage = minchPreloadImage;
         modal.dataset.minchEditorSession = editorSession;
       }
       const isExplicitNew = modal.dataset.minchIsNew === "1" || (!originalId && !window.currentOpenWarframe);
-      if (!isExplicitNew && !originalId) throw new Error("ID de la configuration ouverte absent. Sauvegarde bloquée par sécurité.");
+      if (!isExplicitNew && !originalId) throw new Error("Impossible de retrouver automatiquement cette configuration. Ferme l’éditeur puis rouvre-la depuis sa fiche.");
       // V30 : recharge la dernière copie Firebase avant la sauvegarde pour préserver les images/références existantes.
       let remoteData = null;
       try { remoteData = await loadFirebaseAdminData(); } catch(e) { console.warn("Firebase avant sauvegarde :", e); }
@@ -4186,6 +4206,9 @@ window.minchPreloadImage = minchPreloadImage;
 
     if (saveBtn) saveBtn.disabled = false;
   }
+
+  // V51 : récupération automatique de l'ID existant si un ancien chemin d'ouverture l'a perdu.
+  // Aucun ID manuel n'est demandé : chaque Warframe conserve son _id déjà présent.
 
   // V50 : le bouton de sauvegarde ne doit JAMAIS décider quelle config est éditée.
   // L'identité (_id / nom / session) est fixée une seule fois à l'ouverture de l'éditeur.
