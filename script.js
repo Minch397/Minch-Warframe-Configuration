@@ -3951,6 +3951,120 @@ window.minchPreloadImage = minchPreloadImage;
     return build;
   }
 
+
+  /* V46 — une seule sauvegarde précédente par configuration. */
+  const PREVIOUS_SAVE_LOCAL_KEY = "minch-warframe-previous-saves-v46";
+
+  function readPreviousSavesLocal(){
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PREVIOUS_SAVE_LOCAL_KEY) || "{}");
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch(e) { return {}; }
+  }
+
+  function writePreviousSaveLocal(id, snapshot){
+    if (!id || !snapshot) return;
+    const all = readPreviousSavesLocal();
+    all[id] = deepClone(snapshot);
+    localStorage.setItem(PREVIOUS_SAVE_LOCAL_KEY, JSON.stringify(all));
+  }
+
+  async function readPreviousSave(id){
+    if (!id) return null;
+    if (initMinchFirebase() && firebaseDb) {
+      try {
+        const doc = await firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT).get();
+        if (doc.exists) {
+          const all = (doc.data() || {}).warframePreviousSaves || {};
+          if (all[id]) return deepClone(all[id]);
+        }
+      } catch(e) { console.warn("V46 backup Firebase lecture :", e); }
+    }
+    return deepClone(readPreviousSavesLocal()[id] || null);
+  }
+
+  async function writePreviousSave(id, snapshot){
+    if (!id || !snapshot) return false;
+    const clean = deepClone(snapshot);
+    writePreviousSaveLocal(id, clean);
+    if (initMinchFirebase() && firebaseDb) {
+      try {
+        await firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT).update({
+          [`warframePreviousSaves.${id}`]: clean
+        });
+        return true;
+      } catch(e) { console.warn("V46 backup Firebase écriture :", e); }
+    }
+    return false;
+  }
+
+  async function restorePreviousSave(){
+    const modal = $("adminEditorModal");
+    const status = $("adminSaveStatus");
+    if (!modal) return;
+    const id = modal.dataset.minchEditingId || "";
+    if (!id) {
+      if (status) status.textContent = "Aucune sauvegarde précédente pour une nouvelle configuration.";
+      return;
+    }
+    const previous = await readPreviousSave(id);
+    if (!previous) {
+      if (status) status.textContent = "Aucune sauvegarde précédente disponible.";
+      return;
+    }
+    const label = previous.name || modal.dataset.minchEditingName || "cette configuration";
+    if (!confirm(`Restaurer la dernière sauvegarde de ${label} ?\n\nLa version actuelle sera remplacée.`)) return;
+    if ((modal.dataset.minchEditingId || "") !== id) {
+      if (status) status.textContent = "Restauration annulée : la configuration ouverte a changé.";
+      return;
+    }
+    const index = (warframesData || []).findIndex(w => w && w._id === id);
+    if (index < 0) {
+      if (status) status.textContent = "Restauration annulée : configuration introuvable.";
+      return;
+    }
+
+    const current = deepClone(warframesData[index]);
+    previous._id = id;
+    warframesData[index] = deepClone(previous);
+    window.currentOpenWarframe = warframesData[index];
+    localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
+
+    const onlineOk = await saveFirebaseAdminData();
+    await writePreviousSave(id, current);
+    renderGrid();
+    if (document.body.classList.contains("build-open") && typeof fillBuildContent === "function") {
+      fillBuildContent(warframesData[index]);
+    }
+    if (status) status.textContent = onlineOk ? "Dernière sauvegarde restaurée." : "Dernière sauvegarde restaurée localement. Firebase n'a pas répondu.";
+    if (typeof window.openAdminEditor === "function") window.openAdminEditor(warframesData[index]);
+  }
+
+  function installRestoreButton(){
+    const saveBtn = $("saveAdminEdit");
+    if (!saveBtn) return;
+    let btn = $("minchRestorePreviousSave");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "minchRestorePreviousSave";
+      btn.type = "button";
+      btn.className = "admin-secondary";
+      btn.textContent = "↩ Retourner à la dernière sauvegarde";
+      btn.style.marginTop = "12px";
+      btn.style.width = "100%";
+      saveBtn.insertAdjacentElement("afterend", btn);
+    }
+    btn.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      restorePreviousSave().catch(err => {
+        console.error("V46 restauration :", err);
+        const status = $("adminSaveStatus");
+        if (status) status.textContent = "Erreur pendant la restauration.";
+      });
+    };
+  }
+
   async function robustSaveEditor(){
     const modal = $("adminEditorModal");
     const status = $("adminSaveStatus");
@@ -3965,10 +4079,13 @@ window.minchPreloadImage = minchPreloadImage;
 
       // V44 : une édition existante est verrouillée sur son ID exact.
       // On ne retombe jamais sur le nom (deux configs peuvent avoir le même nom).
-      const currentId = window.currentOpenWarframe && window.currentOpenWarframe._id ? window.currentOpenWarframe._id : "";
-      const originalId = modal.dataset.minchEditingId || currentId || "";
+      // V46 : l'identité vient UNIQUEMENT de la session d'éditeur ouverte.
+      const originalId = modal.dataset.minchEditingId || "";
       const originalName = modal.dataset.minchEditingName || "";
-      const isExplicitNew = !originalId && !currentId;
+      const editorSession = modal.dataset.minchEditorSession || "";
+      const isExplicitNew = modal.dataset.minchIsNew === "1";
+      if (!editorSession) throw new Error("Session éditeur absente. Sauvegarde bloquée par sécurité.");
+      if (!isExplicitNew && !originalId) throw new Error("ID de la configuration ouverte absent. Sauvegarde bloquée par sécurité.");
       // V30 : recharge la dernière copie Firebase avant la sauvegarde pour préserver les images/références existantes.
       let remoteData = null;
       try { remoteData = await loadFirebaseAdminData(); } catch(e) { console.warn("Firebase avant sauvegarde :", e); }
@@ -3984,6 +4101,7 @@ window.minchPreloadImage = minchPreloadImage;
       if (!existing && Array.isArray(remoteData) && originalId) existing = remoteData.find(w => w && w._id === originalId) || null;
       // Une config existante ne doit JAMAIS devenir une nouvelle config silencieusement.
       if (originalId && !existing) throw new Error("Configuration d'origine introuvable (ID : " + originalId + "). Sauvegarde annulée pour éviter un doublon.");
+      const previousSnapshot = existing ? deepClone(existing) : null;
       const editing = existing ? deepClone(existing) : { _id: makeStableId(getValue("editWarframeName")), name:"", builds:[{}] };
       if (!editing._id) editing._id = makeStableId(editing.name || getValue("editWarframeName"));
       modal.dataset.minchEditingId = editing._id;
@@ -4021,8 +4139,13 @@ window.minchPreloadImage = minchPreloadImage;
         if (url) applyUrl(url);
       }
 
+      if ((modal.dataset.minchEditorSession || "") !== editorSession ||
+          (modal.dataset.minchEditingId || "") !== originalId) {
+        throw new Error("La configuration ouverte a changé pendant la sauvegarde. Écriture annulée.");
+      }
       const index = warframesData.findIndex(w => w && w._id === editing._id);
       if (index >= 0) {
+        if (previousSnapshot) await writePreviousSave(editing._id, previousSnapshot);
         warframesData[index] = editing;
       } else if (isExplicitNew) {
         // Seul l'éditeur ouvert en mode "nouvelle configuration" peut créer une entrée.
@@ -4048,8 +4171,10 @@ window.minchPreloadImage = minchPreloadImage;
     const oldBtn = $("saveAdminEdit");
     if (!modal || !oldBtn) return;
 
-    modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : (modal.dataset.minchEditingId || "");
-    modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : (modal.dataset.minchEditingName || "");
+    modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : "";
+    modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : "";
+    modal.dataset.minchIsNew = warframe ? "0" : "1";
+    installRestoreButton();
 
     // Clone le bouton pour retirer les anciens onclick qui pouvaient pousser une nouvelle config plusieurs fois.
     const newBtn = oldBtn.cloneNode(true);
@@ -4075,8 +4200,10 @@ window.minchPreloadImage = minchPreloadImage;
       if (modal) {
         modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : "";
         modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : "";
+        modal.dataset.minchIsNew = warframe ? "0" : "1";
+        modal.dataset.minchEditorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
       }
-      setTimeout(() => patchEditorSaveButton(warframe), 0);
+      setTimeout(() => { patchEditorSaveButton(warframe); installRestoreButton(); }, 0);
       setTimeout(() => patchEditorSaveButton(warframe), 120);
       return result;
     };
@@ -6093,3 +6220,5 @@ window.minchPreloadImage = minchPreloadImage;
     obs.observe(document.body,{childList:true,subtree:true});
   });
 })();
+
+/* V46 — sauvegarde verrouillée par session + backup complet précédent/restauration */
