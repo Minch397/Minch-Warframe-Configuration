@@ -2759,6 +2759,7 @@ window.minchPreloadImage = minchPreloadImage;
 
       <div class="admin-toolbar">
         <button class="admin-primary" type="button" id="saveAdminEdit">Sauvegarder en ligne</button>
+        <button class="admin-secondary" type="button" id="minchRestorePreviousSave">↩ Retourner à la dernière sauvegarde</button>
         <button class="admin-secondary" type="button" id="exportAdminEdit">Exporter backup JSON</button>
         <button class="admin-secondary" type="button" id="resetAdminEdit">Réinitialiser local</button>
         <button class="admin-danger" type="button" id="logoutAdminEdit">Déconnexion</button>
@@ -2778,6 +2779,16 @@ window.minchPreloadImage = minchPreloadImage;
     if (unselectAllToggles) unselectAllToggles.onclick = () => minchSetAllToggles(false);
 
     $("saveAdminEdit").onclick = () => finalSaveEditor(editing, isNew, warframe?._id || warframe?.name);
+    const restorePreviousBtn = $("minchRestorePreviousSave");
+    if (restorePreviousBtn) restorePreviousBtn.onclick = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      restorePreviousSave().catch((err) => {
+        console.error("V47 restauration :", err);
+        const status = $("adminSaveStatus");
+        if (status) status.textContent = "Erreur pendant la restauration.";
+      });
+    };
     $("exportAdminEdit").onclick = exportAdminData;
     $("resetAdminEdit").onclick = resetAdminData;
     $("logoutAdminEdit").onclick = () => { logoutAdmin(); closeAdminEditor(); };
@@ -4042,7 +4053,7 @@ window.minchPreloadImage = minchPreloadImage;
 
   function installRestoreButton(){
     const saveBtn = $("saveAdminEdit");
-    if (!saveBtn) return false;
+    if (!saveBtn) return;
     let btn = $("minchRestorePreviousSave");
     if (!btn) {
       btn = document.createElement("button");
@@ -4058,23 +4069,11 @@ window.minchPreloadImage = minchPreloadImage;
       event.preventDefault();
       event.stopPropagation();
       restorePreviousSave().catch(err => {
-        console.error("V47 restauration :", err);
+        console.error("V46 restauration :", err);
         const status = $("adminSaveStatus");
         if (status) status.textContent = "Erreur pendant la restauration.";
       });
     };
-    return true;
-  }
-
-  function ensureRestoreButtonForEveryEditor(){
-    const content = $("adminEditorContent");
-    if (!content) return;
-    installRestoreButton();
-    if (content.dataset.minchRestoreObserver === "1") return;
-    content.dataset.minchRestoreObserver = "1";
-    new MutationObserver(() => {
-      if ($("saveAdminEdit") && !$("minchRestorePreviousSave")) installRestoreButton();
-    }).observe(content,{childList:true,subtree:true});
   }
 
   async function robustSaveEditor(){
@@ -4215,11 +4214,7 @@ window.minchPreloadImage = minchPreloadImage;
         modal.dataset.minchIsNew = warframe ? "0" : "1";
         modal.dataset.minchEditorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
       }
-      ensureRestoreButtonForEveryEditor();
-      setTimeout(() => {
-        patchEditorSaveButton(warframe);
-        ensureRestoreButtonForEveryEditor();
-      }, 0);
+      setTimeout(() => { patchEditorSaveButton(warframe); installRestoreButton(); }, 0);
       setTimeout(() => patchEditorSaveButton(warframe), 120);
       return result;
     };
@@ -6239,4 +6234,4 @@ window.minchPreloadImage = minchPreloadImage;
 
 /* V46 — sauvegarde verrouillée par session + backup complet précédent/restauration */
 
-/* V47 — basée strictement sur V46 : restauration disponible partout */
+/* V47 FINAL — bouton restauration écrit directement dans finalOpenEditor */
