@@ -4187,25 +4187,24 @@ window.minchPreloadImage = minchPreloadImage;
     if (saveBtn) saveBtn.disabled = false;
   }
 
-  function patchEditorSaveButton(warframe){
+  // V50 : le bouton de sauvegarde ne doit JAMAIS décider quelle config est éditée.
+  // L'identité (_id / nom / session) est fixée une seule fois à l'ouverture de l'éditeur.
+  // Avant V50, les setTimeout de l'ancienne ouverture pouvaient arriver en retard et
+  // remettre l'ID de Caliban alors que l'interface affichait déjà Gara.
+  function patchEditorSaveButton(){
     const modal = $("adminEditorModal");
     const oldBtn = $("saveAdminEdit");
     if (!modal || !oldBtn) return;
 
-    modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : (modal.dataset.minchEditingId || "");
-    modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : (modal.dataset.minchEditingName || "");
-    modal.dataset.minchIsNew = warframe ? "0" : (modal.dataset.minchIsNew || "1");
-    if (!modal.dataset.minchEditorSession) {
-      modal.dataset.minchEditorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    }
     installRestoreButton();
 
-    // Clone le bouton pour retirer les anciens onclick qui pouvaient pousser une nouvelle config plusieurs fois.
+    // Clone le bouton pour retirer tous les anciens handlers de sauvegarde.
     const newBtn = oldBtn.cloneNode(true);
     oldBtn.replaceWith(newBtn);
     newBtn.addEventListener("click", function(event){
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       robustSaveEditor().catch((err) => {
         console.error("Erreur sauvegarde robuste :", err);
         const status = $("adminSaveStatus");
@@ -4213,32 +4212,46 @@ window.minchPreloadImage = minchPreloadImage;
         const btn = $("saveAdminEdit");
         if (btn) btn.disabled = false;
       });
-    });
+    }, true);
   }
 
   const previousOpenAdminEditor = window.openAdminEditor || (typeof openAdminEditor !== "undefined" ? openAdminEditor : null);
   if (previousOpenAdminEditor && !previousOpenAdminEditor.__minchRobustFirebaseSave) {
     const patchedOpenAdminEditor = function(warframe){
-      // V48 : une ancienne config sans _id reçoit son ID AVANT l'ouverture de l'éditeur.
-      // Cela évite que la sécurité anti-doublon bloque une sauvegarde légitime.
+      // Une ancienne config sans _id reçoit son ID AVANT l'ouverture de l'éditeur.
       if (warframe && !warframe._id) {
         warframe._id = makeStableId(warframe.name || "config");
         try {
           const localIndex = (warframesData || []).indexOf(warframe);
           if (localIndex >= 0) warframesData[localIndex]._id = warframe._id;
           localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
-        } catch(e) { console.warn("V48 attribution ID local :", e); }
+        } catch(e) { console.warn("V50 attribution ID local :", e); }
       }
+
+      const targetId = warframe && warframe._id ? warframe._id : "";
+      const targetName = warframe && warframe.name ? warframe.name : "";
+      const targetIsNew = warframe ? "0" : "1";
+      const session = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
       const result = previousOpenAdminEditor.apply(this, arguments);
       const modal = $("adminEditorModal");
       if (modal) {
-        modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : "";
-        modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : "";
-        modal.dataset.minchIsNew = warframe ? "0" : "1";
-        modal.dataset.minchEditorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        // V50 : seule CETTE ouverture a le droit de fixer l'identité de l'éditeur.
+        modal.dataset.minchEditingId = targetId;
+        modal.dataset.minchEditingName = targetName;
+        modal.dataset.minchIsNew = targetIsNew;
+        modal.dataset.minchEditorSession = session;
       }
-      setTimeout(() => { patchEditorSaveButton(warframe); installRestoreButton(); }, 0);
-      setTimeout(() => patchEditorSaveButton(warframe), 120);
+
+      // On attend seulement la création du bouton par le DOM. Le callback vérifie
+      // que l'éditeur n'a pas été rouvert sur une autre config entre-temps.
+      setTimeout(() => {
+        const currentModal = $("adminEditorModal");
+        if (!currentModal || currentModal.dataset.minchEditorSession !== session) return;
+        if ((currentModal.dataset.minchEditingId || "") !== targetId) return;
+        patchEditorSaveButton();
+        installRestoreButton();
+      }, 0);
       return result;
     };
     patchedOpenAdminEditor.__minchRobustFirebaseSave = true;
