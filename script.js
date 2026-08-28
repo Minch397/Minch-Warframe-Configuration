@@ -4093,9 +4093,15 @@ window.minchPreloadImage = minchPreloadImage;
       // V46 : l'identité vient UNIQUEMENT de la session d'éditeur ouverte.
       const originalId = modal.dataset.minchEditingId || "";
       const originalName = modal.dataset.minchEditingName || "";
-      const editorSession = modal.dataset.minchEditorSession || "";
-      const isExplicitNew = modal.dataset.minchIsNew === "1";
-      if (!editorSession) throw new Error("Session éditeur absente. Sauvegarde bloquée par sécurité.");
+      // V49 : certaines ouvertures de l’éditeur passent encore par l’ancien handler
+      // et n’avaient donc pas reçu de token de session. On initialise ce token ici
+      // au lieu de bloquer une sauvegarde parfaitement légitime.
+      let editorSession = modal.dataset.minchEditorSession || "";
+      if (!editorSession) {
+        editorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        modal.dataset.minchEditorSession = editorSession;
+      }
+      const isExplicitNew = modal.dataset.minchIsNew === "1" || (!originalId && !window.currentOpenWarframe);
       if (!isExplicitNew && !originalId) throw new Error("ID de la configuration ouverte absent. Sauvegarde bloquée par sécurité.");
       // V30 : recharge la dernière copie Firebase avant la sauvegarde pour préserver les images/références existantes.
       let remoteData = null;
@@ -4186,9 +4192,12 @@ window.minchPreloadImage = minchPreloadImage;
     const oldBtn = $("saveAdminEdit");
     if (!modal || !oldBtn) return;
 
-    modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : "";
-    modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : "";
-    modal.dataset.minchIsNew = warframe ? "0" : "1";
+    modal.dataset.minchEditingId = warframe && warframe._id ? warframe._id : (modal.dataset.minchEditingId || "");
+    modal.dataset.minchEditingName = warframe && warframe.name ? warframe.name : (modal.dataset.minchEditingName || "");
+    modal.dataset.minchIsNew = warframe ? "0" : (modal.dataset.minchIsNew || "1");
+    if (!modal.dataset.minchEditorSession) {
+      modal.dataset.minchEditorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    }
     installRestoreButton();
 
     // Clone le bouton pour retirer les anciens onclick qui pouvaient pousser une nouvelle config plusieurs fois.
@@ -5520,7 +5529,7 @@ window.minchPreloadImage = minchPreloadImage;
           status.textContent = "Toute la configuration a été sauvegardée.";
         }
       } catch (error) {
-        console.error("V48 — erreur sauvegarde globale :", error);
+        console.error("V49 — erreur sauvegarde globale :", error);
         if (status) status.textContent = `Erreur pendant la sauvegarde complète : ${error?.message || "cause inconnue"}`;
       } finally {
         button.disabled = false;
