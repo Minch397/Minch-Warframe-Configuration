@@ -4042,7 +4042,7 @@ window.minchPreloadImage = minchPreloadImage;
 
   function installRestoreButton(){
     const saveBtn = $("saveAdminEdit");
-    if (!saveBtn) return;
+    if (!saveBtn) return false;
     let btn = $("minchRestorePreviousSave");
     if (!btn) {
       btn = document.createElement("button");
@@ -4058,11 +4058,23 @@ window.minchPreloadImage = minchPreloadImage;
       event.preventDefault();
       event.stopPropagation();
       restorePreviousSave().catch(err => {
-        console.error("V46 restauration :", err);
+        console.error("V47 restauration :", err);
         const status = $("adminSaveStatus");
         if (status) status.textContent = "Erreur pendant la restauration.";
       });
     };
+    return true;
+  }
+
+  function ensureRestoreButtonForEveryEditor(){
+    const content = $("adminEditorContent");
+    if (!content) return;
+    installRestoreButton();
+    if (content.dataset.minchRestoreObserver === "1") return;
+    content.dataset.minchRestoreObserver = "1";
+    new MutationObserver(() => {
+      if ($("saveAdminEdit") && !$("minchRestorePreviousSave")) installRestoreButton();
+    }).observe(content,{childList:true,subtree:true});
   }
 
   async function robustSaveEditor(){
@@ -4203,7 +4215,11 @@ window.minchPreloadImage = minchPreloadImage;
         modal.dataset.minchIsNew = warframe ? "0" : "1";
         modal.dataset.minchEditorSession = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
       }
-      setTimeout(() => { patchEditorSaveButton(warframe); installRestoreButton(); }, 0);
+      ensureRestoreButtonForEveryEditor();
+      setTimeout(() => {
+        patchEditorSaveButton(warframe);
+        ensureRestoreButtonForEveryEditor();
+      }, 0);
       setTimeout(() => patchEditorSaveButton(warframe), 120);
       return result;
     };
@@ -6222,3 +6238,5 @@ window.minchPreloadImage = minchPreloadImage;
 })();
 
 /* V46 — sauvegarde verrouillée par session + backup complet précédent/restauration */
+
+/* V47 — basée strictement sur V46 : restauration disponible partout */
