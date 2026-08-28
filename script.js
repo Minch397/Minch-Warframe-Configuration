@@ -4150,8 +4150,12 @@ window.minchPreloadImage = minchPreloadImage;
         if (url) applyUrl(url);
       }
 
+      // V48 : pour une NOUVELLE config, l'ID est créé pendant cette sauvegarde.
+      // L'ancien contrôle comparait alors ce nouvel ID à une chaîne vide et annulait
+      // systématiquement la sauvegarde avec « configuration ouverte a changé ».
+      const expectedEditingId = isExplicitNew ? editing._id : originalId;
       if ((modal.dataset.minchEditorSession || "") !== editorSession ||
-          (modal.dataset.minchEditingId || "") !== originalId) {
+          (modal.dataset.minchEditingId || "") !== expectedEditingId) {
         throw new Error("La configuration ouverte a changé pendant la sauvegarde. Écriture annulée.");
       }
       const index = warframesData.findIndex(w => w && w._id === editing._id);
@@ -4196,7 +4200,7 @@ window.minchPreloadImage = minchPreloadImage;
       robustSaveEditor().catch((err) => {
         console.error("Erreur sauvegarde robuste :", err);
         const status = $("adminSaveStatus");
-        if (status) status.textContent = "Erreur pendant la sauvegarde.";
+        if (status) status.textContent = `Erreur pendant la sauvegarde : ${err?.message || "cause inconnue"}`;
         const btn = $("saveAdminEdit");
         if (btn) btn.disabled = false;
       });
@@ -4206,6 +4210,16 @@ window.minchPreloadImage = minchPreloadImage;
   const previousOpenAdminEditor = window.openAdminEditor || (typeof openAdminEditor !== "undefined" ? openAdminEditor : null);
   if (previousOpenAdminEditor && !previousOpenAdminEditor.__minchRobustFirebaseSave) {
     const patchedOpenAdminEditor = function(warframe){
+      // V48 : une ancienne config sans _id reçoit son ID AVANT l'ouverture de l'éditeur.
+      // Cela évite que la sécurité anti-doublon bloque une sauvegarde légitime.
+      if (warframe && !warframe._id) {
+        warframe._id = makeStableId(warframe.name || "config");
+        try {
+          const localIndex = (warframesData || []).indexOf(warframe);
+          if (localIndex >= 0) warframesData[localIndex]._id = warframe._id;
+          localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
+        } catch(e) { console.warn("V48 attribution ID local :", e); }
+      }
       const result = previousOpenAdminEditor.apply(this, arguments);
       const modal = $("adminEditorModal");
       if (modal) {
@@ -5506,8 +5520,8 @@ window.minchPreloadImage = minchPreloadImage;
           status.textContent = "Toute la configuration a été sauvegardée.";
         }
       } catch (error) {
-        console.error("V24 — erreur sauvegarde globale :", error);
-        if (status) status.textContent = "Erreur pendant la sauvegarde complète.";
+        console.error("V48 — erreur sauvegarde globale :", error);
+        if (status) status.textContent = `Erreur pendant la sauvegarde complète : ${error?.message || "cause inconnue"}`;
       } finally {
         button.disabled = false;
       }
@@ -6235,3 +6249,6 @@ window.minchPreloadImage = minchPreloadImage;
 /* V46 — sauvegarde verrouillée par session + backup complet précédent/restauration */
 
 /* V47 FINAL — bouton restauration écrit directement dans finalOpenEditor */
+
+
+/* V48 — correction sauvegarde complète : ID legacy + nouvelle configuration + message erreur détaillé. */
