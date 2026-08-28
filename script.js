@@ -6297,3 +6297,152 @@ window.minchPreloadImage = minchPreloadImage;
 
 
 /* V48 — correction sauvegarde complète : ID legacy + nouvelle configuration + message erreur détaillé. */
+
+/* ---------- V52 : IDENTITÉ STRICTE PAR _id — JAMAIS PAR LE NOM ---------- */
+(function(){
+  function makeFallbackId(item){
+    const base = (typeof slugifyText === "function" ? slugifyText(item?.name || "config") : String(item?.name || "config").toLowerCase().replace(/[^a-z0-9]+/g,"_")) || "config";
+    return `${base}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+  }
+
+  function ensureIdsStrict(){
+    const used = new Set();
+    (warframesData || []).forEach((item) => {
+      if (!item._id || used.has(item._id)) item._id = makeFallbackId(item);
+      used.add(item._id);
+    });
+  }
+
+  function findById(id){
+    if (!id) return null;
+    return (warframesData || []).find(w => w && w._id === id) || null;
+  }
+
+  ensureIdsStrict();
+
+  // Point important : après une sauvegarde, ne JAMAIS retrouver la config par son nom.
+  // Deux fiches peuvent avoir temporairement le même nom lors d'une réparation manuelle.
+  refreshAfterAdminChange = function(){
+    ensureIdsStrict();
+    const currentId = window.currentOpenWarframe && window.currentOpenWarframe._id ? window.currentOpenWarframe._id : "";
+
+    localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
+    if (typeof saveFirebaseAdminData === "function") {
+      saveFirebaseAdminData().then((savedOnline) => {
+        const status = document.getElementById("adminSaveStatus");
+        if (status && savedOnline && !/Erreur/i.test(status.textContent || "")) status.textContent = "Sauvegardé en ligne sur Firebase.";
+      }).catch((error) => console.error("V52 Firebase refresh :", error));
+    }
+
+    if (typeof renderGrid === "function") renderGrid();
+
+    if (currentId && document.body.classList.contains("build-open")) {
+      const fresh = findById(currentId);
+      if (fresh) {
+        window.currentOpenWarframe = fresh;
+        if (typeof fillBuildContent === "function") fillBuildContent(fresh);
+      }
+    }
+  };
+  window.refreshAfterAdminChange = refreshAfterAdminChange;
+
+  // Suppression stricte par ID : un doublon de nom ne peut plus supprimer l'autre fiche.
+  deleteCurrentWarframe = function(){
+    ensureIdsStrict();
+    const current = window.currentOpenWarframe;
+    if (!current || !current._id) return;
+    const ok = confirm(`Supprimer ${current.name} ?`);
+    if (!ok) return;
+    const id = current._id;
+    warframesData = (warframesData || []).filter(w => !w || w._id !== id);
+    window.currentOpenWarframe = null;
+    localStorage.setItem(ADMIN_DATA_KEY, JSON.stringify(warframesData));
+    if (typeof saveFirebaseAdminData === "function") saveFirebaseAdminData().catch?.(() => {});
+    if (typeof closeBuild === "function") closeBuild();
+    if (typeof renderGrid === "function") renderGrid();
+  };
+  window.deleteCurrentWarframe = deleteCurrentWarframe;
+
+  // Chaque bouton Modifier capture l'ID de LA fiche affichée au moment du rendu.
+  // Même si window.currentOpenWarframe change plus tard, le bouton ne peut pas ouvrir une autre fiche.
+  function bindStrictEditButton(){
+    const current = window.currentOpenWarframe;
+    if (!current || !current._id) return;
+    const id = current._id;
+    document.querySelectorAll('[data-admin-build-action="edit"]').forEach((oldBtn) => {
+      if (oldBtn.dataset.v52ConfigId === id) return;
+      const btn = oldBtn.cloneNode(true);
+      btn.dataset.v52ConfigId = id;
+      oldBtn.replaceWith(btn);
+      btn.addEventListener("click", function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        const target = findById(id);
+        if (!target) {
+          alert("Cette configuration n'existe plus. Recharge la page avant de continuer.");
+          return;
+        }
+        window.currentOpenWarframe = target;
+        if (typeof window.openAdminEditor === "function") window.openAdminEditor(target);
+      }, true);
+    });
+  }
+
+  const previousFill = window.fillBuildContent || (typeof fillBuildContent === "function" ? fillBuildContent : null);
+  if (previousFill && !previousFill.__v52StrictIdentity) {
+    const patchedFill = function(w){
+      ensureIdsStrict();
+      if (w && w._id) {
+        const exact = findById(w._id);
+        if (exact) w = exact;
+      }
+      window.currentOpenWarframe = w;
+      const result = previousFill(w);
+      setTimeout(bindStrictEditButton, 0);
+      return result;
+    };
+    patchedFill.__v52StrictIdentity = true;
+    fillBuildContent = patchedFill;
+    window.fillBuildContent = patchedFill;
+  }
+
+  const previousOpenBuild = window.openBuild || (typeof openBuild === "function" ? openBuild : null);
+  if (previousOpenBuild && !previousOpenBuild.__v52StrictIdentity) {
+    const patchedOpenBuild = function(w){
+      ensureIdsStrict();
+      const target = w && w._id ? findById(w._id) : null;
+      if (!target) return;
+      window.currentOpenWarframe = target;
+      const result = previousOpenBuild(target);
+      setTimeout(bindStrictEditButton, 0);
+      setTimeout(bindStrictEditButton, 500);
+      return result;
+    };
+    patchedOpenBuild.__v52StrictIdentity = true;
+    openBuild = patchedOpenBuild;
+    window.openBuild = patchedOpenBuild;
+  }
+
+  // À l'ouverture de l'éditeur, on refuse toute ambiguïté : l'objet doit exister par _id exact.
+  const previousOpenEditor = window.openAdminEditor || (typeof openAdminEditor === "function" ? openAdminEditor : null);
+  if (previousOpenEditor && !previousOpenEditor.__v52StrictIdentity) {
+    const patchedOpenEditor = function(w){
+      ensureIdsStrict();
+      if (w) {
+        if (!w._id) throw new Error("V52 : configuration sans ID.");
+        const exact = findById(w._id);
+        if (!exact) throw new Error("V52 : configuration introuvable par ID.");
+        w = exact;
+        window.currentOpenWarframe = exact;
+      }
+      return previousOpenEditor(w);
+    };
+    patchedOpenEditor.__v52StrictIdentity = true;
+    openAdminEditor = patchedOpenEditor;
+    window.openAdminEditor = patchedOpenEditor;
+  }
+
+  window.minchFindWarframeById = findById;
+  window.minchEnsureStrictIds = ensureIdsStrict;
+})();
