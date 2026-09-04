@@ -159,8 +159,8 @@
         </button>
         <button class="hub-card" type="button" data-hub-target="weekly" data-hub-card-key="weekly">
           <span class="hub-card-icon">✅</span>
-          <span class="hub-card-title">Tâches hebdomadaires</span>
-          <span class="hub-card-text">Cocher les activités de la semaine avant la réinitialisation du lundi à 2 h.</span>
+          <span class="hub-card-title">Activités &amp; Rotations</span>
+          <span class="hub-card-text">Tâches hebdomadaires, rotations Coda / Tenet et cycle des Eidolons.</span>
         </button>
         <button class="hub-card" type="button" data-hub-target="companions" data-hub-card-key="companions">
           <span class="hub-card-icon">🐾</span>
@@ -219,6 +219,9 @@
     <section id="companionsSection" class="hub-section is-hidden">
       <button class="hub-back" type="button" data-hub-back>← Accueil</button>
       <div class="hub-section-head"><h1>Compagnons</h1><p>Quel compagnon choisir et pourquoi.</p></div>
+      <div class="search-container companion-search-container">
+        <input id="companionSearch" type="text" placeholder="Rechercher un compagnon ou une catégorie..." autocomplete="off">
+      </div>
       <div id="companionsGrid" class="content-card-grid"></div>
     </section>
 
@@ -230,9 +233,23 @@
 
     <section id="weeklySection" class="hub-section is-hidden">
       <button class="hub-back" type="button" data-hub-back>← Accueil</button>
-      <div class="hub-section-head"><h1>Tâches hebdomadaires</h1><p>Réinitialisation automatique chaque lundi à 2 h.</p></div>
-      <div id="weeklyResetInfo" class="weekly-reset-info"></div>
-      <div id="weeklyTasks" class="weekly-tasks"></div>
+      <div class="hub-section-head activities-main-head"><h1>Activités &amp; Rotations</h1></div>
+
+      <div class="activity-block weekly-activity-block">
+        <div class="hub-section-head activity-subhead"><h2>Tâches hebdomadaires</h2><p>Réinitialisation automatique chaque lundi à 2 h.</p></div>
+        <div id="weeklyResetInfo" class="weekly-reset-info"></div>
+        <div id="weeklyTasks" class="weekly-tasks"></div>
+      </div>
+
+      <div class="activity-block rotation-activity-block">
+        <div class="hub-section-head activity-subhead"><h2>Rotation armes Coda &amp; Tenet</h2><p>Les offres d’Eleanor et d’Ergo Glast changent toutes les 96 heures à 00:00 UTC.</p></div>
+        <div id="weaponRotations" class="rotation-grid"></div>
+      </div>
+
+      <div class="activity-block eidolon-activity-block">
+        <div class="hub-section-head activity-subhead"><h2>Eidolons — Plaines d’Eidolon</h2></div>
+        <div id="eidolonCycle" class="eidolon-cycle-card"></div>
+      </div>
     </section>
   </div>
 
@@ -252,7 +269,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-<script type="module" src="script.js?v=V52"></script>
+<script type="module" src="script.js?v=V53-safe"></script>
 </body>
 </html>
 

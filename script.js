@@ -4738,7 +4738,7 @@ window.minchPreloadImage = minchPreloadImage;
       warframes: { title:"Configurations Warframe", text:"Accéder aux builds, compagnons, armes et détails de chaque configuration.", icon:"⚙️", image:"", overlay:28, width:2, height:1 },
       guides: { title:"Guides & Conseils", text:"Retrouver les conseils et guides utiles pour Warframe.", icon:"📘", image:"", overlay:28, width:1, height:1 },
       tiers: { title:"Tier Lists", text:"Consulter les classements Warframes, armes et autres catégories.", icon:"🏆", image:"", overlay:28, width:1, height:1 },
-      weekly: { title:"Tâches hebdomadaires", text:"Cocher les activités de la semaine avant la réinitialisation du lundi à 2 h.", icon:"✅", image:"", overlay:28, width:1, height:1 },
+      weekly: { title:"Activités & Rotations", text:"Tâches hebdomadaires, rotations Coda / Tenet et cycle des Eidolons.", icon:"✅", image:"", overlay:28, width:1, height:1 },
       companions: { title:"Compagnons", text:"Voir quel compagnon choisir et comprendre rapidement son utilité.", icon:"🐾", image:"", overlay:28, width:1, height:1 },
       elements: { title:"Éléments & Statuts", text:"Comprendre les éléments, les statuts et les faiblesses des ennemis.", icon:"🧪", image:"", overlay:28, width:1, height:1 }
     },
@@ -4783,8 +4783,10 @@ window.minchPreloadImage = minchPreloadImage;
     const rawCards = raw.navCards && typeof raw.navCards === "object" ? raw.navCards : {};
     Object.keys(base.navCards).forEach((key)=>{
       const d=base.navCards[key], x=rawCards[key]&&typeof rawCards[key]==="object"?rawCards[key]:{};
+      const normalizedTitle=(key==="weekly" && String(x.title||d.title)==="Tâches hebdomadaires") ? "Activités & Rotations" : String(x.title||d.title);
+      const normalizedText=(key==="weekly" && String(x.text||d.text)==="Cocher les activités de la semaine avant la réinitialisation du lundi à 2 h.") ? "Tâches hebdomadaires, rotations Coda / Tenet et cycle des Eidolons." : String(x.text||d.text);
       base.navCards[key]={
-        title:String(x.title||d.title), text:String(x.text||d.text), icon:Object.prototype.hasOwnProperty.call(x,"icon")?String(x.icon??""):String(d.icon||""), image:String(x.image||""),
+        title:normalizedTitle, text:normalizedText, icon:Object.prototype.hasOwnProperty.call(x,"icon")?String(x.icon??""):String(d.icon||""), image:String(x.image||""),
         overlay:Math.min(80,Math.max(0,Number.isFinite(Number(x.overlay))?Number(x.overlay):(d.overlay ?? 28))),
         width:Math.min(3,Math.max(1,Number(x.width)||d.width)), height:Math.min(3,Math.max(1,Number(x.height)||d.height))
       };
@@ -5062,7 +5064,9 @@ window.minchPreloadImage = minchPreloadImage;
 
   function renderCompanions(){
     const root=document.getElementById("companionsGrid"); if(!root)return;
-    root.innerHTML=hubData.companions.map(x=>`<article class="companion-info-card" data-id="${esc(x.id)}" data-card-width="${Math.min(3,Math.max(1,Number(x.width)||1))}" data-card-height="${Math.min(3,Math.max(1,Number(x.height)||1))}"><div class="companion-info-layout">${x.image?`<button class="hub-media-thumb companion-media-thumb" type="button" data-companion-view><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></button>`:`<div class="hub-media-placeholder companion-media-thumb">🐾</div>`}<div class="companion-info-copy"><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></div></div>${modifiedBadge(x.updatedAt)}${window.isAdminMode?`<div class="hub-admin-actions"><button class="hub-admin-btn" data-companion-edit>Modifier</button><button class="hub-admin-btn danger" data-companion-delete>Supprimer</button></div>`:""}</article>`).join("")+(window.isAdminMode?`<button class="hub-add-card" type="button" data-companion-add>＋ Ajouter un compagnon</button>`:hubData.companions.length?"":"<div class='companion-info-card'><h3>Aucun compagnon pour le moment</h3><p>Les compagnons ajoutés depuis le mode Admin apparaîtront ici.</p></div>");
+    const q=String(document.getElementById("companionSearch")?.value||"").trim().toLocaleLowerCase("fr");
+    const visibleCompanions=(hubData.companions||[]).filter(x=>!q || `${x.title||""} ${x.text||""}`.toLocaleLowerCase("fr").includes(q));
+    root.innerHTML=visibleCompanions.map(x=>`<article class="companion-info-card" data-id="${esc(x.id)}" data-card-width="${Math.min(3,Math.max(1,Number(x.width)||1))}" data-card-height="${Math.min(3,Math.max(1,Number(x.height)||1))}"><div class="companion-info-layout">${x.image?`<button class="hub-media-thumb companion-media-thumb" type="button" data-companion-view><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></button>`:`<div class="hub-media-placeholder companion-media-thumb">🐾</div>`}<div class="companion-info-copy"><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></div></div>${modifiedBadge(x.updatedAt)}${window.isAdminMode?`<div class="hub-admin-actions"><button class="hub-admin-btn" data-companion-edit>Modifier</button><button class="hub-admin-btn danger" data-companion-delete>Supprimer</button></div>`:""}</article>`).join("")+(window.isAdminMode?`<button class="hub-add-card" type="button" data-companion-add>＋ Ajouter un compagnon</button>`:visibleCompanions.length?"":(q?"<div class='companion-info-card'><h3>Aucun résultat</h3><p>Aucun compagnon ne correspond à cette recherche.</p></div>":"<div class='companion-info-card'><h3>Aucun compagnon pour le moment</h3><p>Les compagnons ajoutés depuis le mode Admin apparaîtront ici.</p></div>"));
     root.querySelector("[data-companion-add]")?.addEventListener("click",()=>openCompanionEditor());
     root.querySelectorAll("[data-companion-view]").forEach(b=>b.onclick=()=>{const item=hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id);if(item?.image)openTierViewer(item.image,item.title);});
     root.querySelectorAll("[data-companion-edit]").forEach(b=>b.onclick=()=>openCompanionEditor(hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id)));
@@ -5259,12 +5263,74 @@ window.minchPreloadImage = minchPreloadImage;
     root.querySelector("[data-task-add]")?.addEventListener("click",()=>openTaskEditor());
     root.querySelectorAll("[data-task-edit]").forEach(b=>b.onclick=()=>openTaskEditor(hubData.weekly.find(x=>x.id===b.closest("[data-id]").dataset.id)));
     root.querySelectorAll("[data-task-delete]").forEach(b=>b.onclick=async()=>{hubData.weekly=hubData.weekly.filter(x=>x.id!==b.closest("[data-id]").dataset.id);await saveHub();});
+    renderRotationTimers();
+    renderEidolonCycle();
   }
 
   function renderFooter(){
     document.querySelectorAll(".hub-footer-column").forEach((el)=>{const i=Number(el.dataset.footerIndex)||0;const d=hubData.footer[i]||{title:"",text:""};el.innerHTML=`<h3>${esc(d.title)}</h3><p>${esc(d.text)}</p>${window.isAdminMode?`<button class="hub-admin-btn hub-footer-edit" type="button">Modifier</button>`:""}`;el.querySelector(".hub-footer-edit")?.addEventListener("click",()=>openFooterEditor(i));});
   }
-  function renderAllHubContent(){renderHubCards();renderGuides();renderCompanions();renderElements();renderTiers();renderWeekly();renderRecentUpdates();renderFooter();}
+  const ROTATION_CHECK_KEY="minch-rotation-checks-v1";
+  function rotationWindow(nowMs=Date.now()){
+    const period=96*60*60*1000;
+    // Official Coda launch schedule anchor: Batch B began 2025-03-23 00:00 UTC.
+    const anchor=Date.UTC(2025,2,23,0,0,0);
+    const index=Math.floor((nowMs-anchor)/period);
+    const start=anchor+index*period;
+    return {key:String(start),next:start+period};
+  }
+  function fmtDuration(ms){
+    ms=Math.max(0,ms); const d=Math.floor(ms/86400000); ms%=86400000;
+    const h=Math.floor(ms/3600000); ms%=3600000; const m=Math.floor(ms/60000); const sec=Math.floor((ms%60000)/1000);
+    return `${d}j ${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m ${String(sec).padStart(2,"0")}s`;
+  }
+  function getRotationChecks(){try{return JSON.parse(localStorage.getItem(ROTATION_CHECK_KEY)||"{}")||{};}catch(e){return {};}}
+  function renderRotationTimers(){
+    const root=document.getElementById("weaponRotations"); if(!root)return;
+    const {key,next}=rotationWindow(); const all=getRotationChecks(); const checks=all[key]||{};
+    root.innerHTML=[['coda','Armes Coda','Eleanor'],['tenet','Armes Tenet','Ergo Glast']].map(([id,title,vendor])=>`<div class="rotation-card"><h3>${title}</h3><p>${vendor}</p><strong class="rotation-time">${fmtDuration(next-Date.now())}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" ${checks[id]?"checked":""}> Rotation vérifiée</label></div>`).join("");
+    root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();latest[key]=latest[key]||{};latest[key][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
+  }
+  let eidolonApiState=null;
+  async function refreshEidolonApi(){
+    try{
+      const r=await fetch("https://api.warframestat.us/pc/cetusCycle",{cache:"no-store"});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const d=await r.json();
+      const expiry=Date.parse(d.expiry||"");
+      if(Number.isFinite(expiry)) eidolonApiState={night:Boolean(d.isNight),expiry};
+    }catch(e){ /* garde le dernier état valide si l'API est momentanément indisponible */ }
+    renderEidolonCycle();
+  }
+  function renderEidolonCycle(){
+    const root=document.getElementById("eidolonCycle");if(!root)return;
+    if(!eidolonApiState){root.className="eidolon-cycle-card";root.innerHTML=`<div class="eidolon-cycle-content"><span class="eidolon-cycle-icon">◌</span><strong>Synchronisation du cycle de Cetus…</strong></div>`;return;}
+    let remaining=eidolonApiState.expiry-Date.now();
+    if(remaining<=0){refreshEidolonApi();remaining=0;}
+    const night=eidolonApiState.night; root.classList.toggle("is-night",night);root.classList.toggle("is-day",!night);
+    root.innerHTML=`<div class="eidolon-glow"></div><div class="eidolon-cycle-content"><span class="eidolon-cycle-icon">${night?'🌙':'☀️'}</span><strong>${night?'Nuit restante':'Nuit dans'}</strong><span class="eidolon-time">${fmtDuration(remaining).replace(/^0j /,'')}</span><small>${night?'Eidolons disponibles':'Prochaine chasse à la tombée de la nuit'}</small></div>`;
+  }
+  function bindCompanionSearch(){const input=document.getElementById("companionSearch");if(input&&!input.dataset.bound){input.dataset.bound="1";input.addEventListener("input",renderCompanions);}}
+  function injectV53SafeStyles(){
+    if(document.getElementById("v53SafeStyles"))return;const st=document.createElement("style");st.id="v53SafeStyles";st.textContent=`
+      .companion-search-container{max-width:900px;margin:0 auto 28px}.companion-search-container input{width:100%;box-sizing:border-box}
+      #weeklySection .activities-main-head,#weeklySection .activity-subhead{text-align:center;margin-left:auto;margin-right:auto}
+      #weeklySection .activity-block{width:min(1500px,96%);margin:30px auto 46px}
+      #weeklySection .weekly-reset-info{text-align:center;margin-left:auto;margin-right:auto}
+      #weeklySection .weekly-tasks{width:100%;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+      #weeklySection .weekly-task{min-width:0;box-sizing:border-box;overflow:hidden}
+      .rotation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%}
+      .rotation-card,.eidolon-cycle-card{position:relative;box-sizing:border-box;border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:24px;text-align:center;background:rgba(8,12,22,.72);overflow:hidden}
+      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);letter-spacing:.04em;margin:8px 0 14px}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}
+      .eidolon-cycle-card{min-height:210px;display:grid;place-items:center}.eidolon-cycle-card.is-day{background:radial-gradient(circle at 50% 45%,rgba(255,190,65,.22),rgba(8,12,22,.78) 65%)}.eidolon-cycle-card.is-night{background:radial-gradient(circle at 50% 45%,rgba(104,86,255,.25),rgba(8,12,22,.8) 65%)}
+      .eidolon-cycle-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}.eidolon-cycle-icon{font-size:2rem}.eidolon-cycle-content small{opacity:.75}
+      @media(max-width:800px){#weeklySection .weekly-tasks,.rotation-grid{grid-template-columns:1fr}}
+    `;document.head.appendChild(st);
+  }
+
+  function renderAllHubContent(){injectV53SafeStyles();bindCompanionSearch();if(!eidolonApiState)refreshEidolonApi();renderHubCards();renderGuides();renderCompanions();renderElements();renderTiers();renderWeekly();renderRecentUpdates();renderFooter();}
+  setInterval(()=>{if(currentHubView==="weekly"){renderRotationTimers();renderEidolonCycle();}},1000);
+  setInterval(refreshEidolonApi,60000);
 
   function initHub(){
     loadHubLocal();
