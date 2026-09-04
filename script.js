@@ -4748,6 +4748,11 @@ window.minchPreloadImage = minchPreloadImage;
     tierIntro: { text:"", size:16, align:"center" },
     recentUpdatesStyle: { width:2, height:2 },
     activityMedia: { coda:"", tenet:"", eidolon:"" },
+    activityText: {
+      coda:{title:"Armes Coda",subtitle:"Eleanor"},
+      tenet:{title:"Armes Tenet",subtitle:"Ergo Glast"},
+      eidolon:{dayTitle:"Nuit dans",nightTitle:"Nuit restante",dayText:"Prochaine chasse à la tombée de la nuit",nightText:"Eidolons disponibles"}
+    },
     tierCategories: [
       {id:"warframes",title:"Warframes",text:"",icon:"",image:"",overlay:28,width:1,height:1},
       {id:"primary",title:"Armes principales",text:"",icon:"",image:"",overlay:28,width:1,height:1},
@@ -4801,6 +4806,12 @@ window.minchPreloadImage = minchPreloadImage;
     base.recentUpdatesStyle={width:Math.min(3,Math.max(1,Number(recentStyle.width)||2)),height:Math.min(3,Math.max(1,Number(recentStyle.height)||2))};
     const activityMedia=raw.activityMedia&&typeof raw.activityMedia==="object"?raw.activityMedia:{};
     base.activityMedia={coda:String(activityMedia.coda||""),tenet:String(activityMedia.tenet||""),eidolon:String(activityMedia.eidolon||"")};
+    const activityText=raw.activityText&&typeof raw.activityText==="object"?raw.activityText:{};
+    base.activityText={
+      coda:{title:String(activityText.coda?.title||"Armes Coda"),subtitle:String(activityText.coda?.subtitle||"Eleanor")},
+      tenet:{title:String(activityText.tenet?.title||"Armes Tenet"),subtitle:String(activityText.tenet?.subtitle||"Ergo Glast")},
+      eidolon:{dayTitle:String(activityText.eidolon?.dayTitle||"Nuit dans"),nightTitle:String(activityText.eidolon?.nightTitle||"Nuit restante"),dayText:String(activityText.eidolon?.dayText||"Prochaine chasse à la tombée de la nuit"),nightText:String(activityText.eidolon?.nightText||"Eidolons disponibles")}
+    };
     if(Array.isArray(raw.tierCategories)&&raw.tierCategories.length) base.tierCategories=raw.tierCategories.map((x,i)=>({
       id:String(x?.id||`cat_${i}`), title:String(x?.title||`Catégorie ${i+1}`), text:String(x?.text||""), icon:String(x?.icon||""), image:String(x?.image||""),
       overlay:Math.min(80,Math.max(0,Number.isFinite(Number(x?.overlay))?Number(x.overlay):28)),
@@ -5290,19 +5301,31 @@ window.minchPreloadImage = minchPreloadImage;
   function getRotationChecks(){try{return JSON.parse(localStorage.getItem(ROTATION_CHECK_KEY)||"{}")||{};}catch(e){return {};}}
   async function openActivityBackgroundEditor(kind,label){
     const current=String(hubData.activityMedia?.[kind]||"");
+    const txt=hubData.activityText?.[kind]||{};
     const inputId=`hubActivityBg_${kind}_${Date.now()}`;
-    const {overlay,close,save}=editorShell(`Modifier le fond — ${label}`,`<label>Image de fond<input id="${inputId}" class="admin-input" type="file" accept="image/*"></label><label>ou URL de l'image<input id="hubActivityBgUrl" class="admin-input" value="${esc(current)}" placeholder="https://..."></label><p style="opacity:.7;margin:4px 0 0">Laissez l’URL vide pour retirer le fond personnalisé.</p>`);
+    const textFields=kind==="eidolon" ? `
+      <label>Texte pendant le jour<input id="hubActDayTitle" class="admin-input" value="${esc(txt.dayTitle||"Nuit dans")}"></label>
+      <label>Sous-texte pendant le jour<input id="hubActDayText" class="admin-input" value="${esc(txt.dayText||"Prochaine chasse à la tombée de la nuit")}"></label>
+      <label>Texte pendant la nuit<input id="hubActNightTitle" class="admin-input" value="${esc(txt.nightTitle||"Nuit restante")}"></label>
+      <label>Sous-texte pendant la nuit<input id="hubActNightText" class="admin-input" value="${esc(txt.nightText||"Eidolons disponibles")}"></label>` : `
+      <label>Titre<input id="hubActTitle" class="admin-input" value="${esc(txt.title||label)}"></label>
+      <label>Sous-titre<input id="hubActSubtitle" class="admin-input" value="${esc(txt.subtitle||"")}"></label>`;
+    const {overlay,close,save}=editorShell(`Modifier — ${label}`,`${textFields}<label>Image de fond<input id="${inputId}" class="admin-input" type="file" accept="image/*"></label><label>ou URL de l'image<input id="hubActivityBgUrl" class="admin-input" value="${esc(current)}" placeholder="https://..."></label><p style="opacity:.7;margin:4px 0 0">Laissez l’URL vide pour retirer le fond personnalisé.</p>`);
     save.onclick=async()=>{
       let image=String(overlay.querySelector("#hubActivityBgUrl")?.value||"").trim();
       const fileInput=overlay.querySelector(`#${inputId}`);
       if(fileInput?.files?.[0] && typeof uploadImageInput==="function"){save.disabled=true;save.textContent="Envoi...";const uploaded=await uploadImageInput(inputId,"hub_activities");if(uploaded)image=uploaded;}
-      hubData.activityMedia=hubData.activityMedia||{coda:"",tenet:"",eidolon:""};hubData.activityMedia[kind]=image;await saveHub();close();
+      hubData.activityMedia=hubData.activityMedia||{coda:"",tenet:"",eidolon:""};hubData.activityMedia[kind]=image;
+      hubData.activityText=hubData.activityText||{};
+      if(kind==="eidolon") hubData.activityText.eidolon={dayTitle:String(overlay.querySelector("#hubActDayTitle")?.value||"Nuit dans").trim(),nightTitle:String(overlay.querySelector("#hubActNightTitle")?.value||"Nuit restante").trim(),dayText:String(overlay.querySelector("#hubActDayText")?.value||"").trim(),nightText:String(overlay.querySelector("#hubActNightText")?.value||"").trim()};
+      else hubData.activityText[kind]={title:String(overlay.querySelector("#hubActTitle")?.value||label).trim(),subtitle:String(overlay.querySelector("#hubActSubtitle")?.value||"").trim()};
+      await saveHub();close();
     };
   }
   function renderRotationTimers(){
     const root=document.getElementById("weaponRotations"); if(!root)return;
     const {key,next}=rotationWindow(); const all=getRotationChecks(); const checks=all[key]||{};
-    root.innerHTML=[['coda','Armes Coda','Eleanor',-86400000],['tenet','Armes Tenet','Ergo Glast',172800000]].map(([id,title,vendor,timerOffset])=>{const bg=hubData.activityMedia?.[id]||"";return `<div class="rotation-card${bg?" has-activity-bg":""}" ${bg?`style="--activity-bg:url(\'${esc(bg)}\')"`:""}><div class="activity-card-content"><h3>${title}</h3><p>${vendor}</p><strong class="rotation-time">${fmtDuration(next-Date.now()+timerOffset)}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" ${checks[id]?"checked":""}> Rotation vérifiée</label></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-activity-bg="${id}">Modifier le fond</button>`:""}</div>`}).join("");
+    root.innerHTML=[['coda','Armes Coda','Eleanor',-86400000],['tenet','Armes Tenet','Ergo Glast',172800000]].map(([id,defaultTitle,defaultVendor,timerOffset])=>{const bg=hubData.activityMedia?.[id]||"";const txt=hubData.activityText?.[id]||{};const title=txt.title||defaultTitle,vendor=txt.subtitle||defaultVendor;return `<div class="rotation-card${bg?" has-activity-bg":""}" ${bg?`style="--activity-bg:url(\'${esc(bg)}\')"`:""}><div class="activity-card-content"><h3>${esc(title)}</h3><p>${esc(vendor)}</p><strong class="rotation-time">${fmtDuration(next-Date.now()+timerOffset)}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" ${checks[id]?"checked":""}> Arme à 60 % dans la rotation vérifiée</label></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-activity-bg="${id}">Modifier</button>`:""}</div>`}).join("");
     root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();latest[key]=latest[key]||{};latest[key][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
     root.querySelectorAll("[data-activity-bg]").forEach(b=>b.onclick=()=>openActivityBackgroundEditor(b.dataset.activityBg,b.dataset.activityBg==="coda"?"Armes Coda":"Armes Tenet"));
   }
@@ -5324,8 +5347,13 @@ window.minchPreloadImage = minchPreloadImage;
     if(remaining<=0){refreshEidolonApi();remaining=0;}
     const night=eidolonApiState.night; root.classList.toggle("is-night",night);root.classList.toggle("is-day",!night);
     const bg=hubData.activityMedia?.eidolon||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);else root.style.removeProperty("--activity-bg");
-    root.innerHTML=`<div class="eidolon-glow"></div><div class="eidolon-cycle-content"><span class="eidolon-cycle-icon">${night?'🌙':'☀️'}</span><strong>${night?'Nuit restante':'Nuit dans'}</strong><span class="eidolon-time">${fmtDuration(remaining).replace(/^0j /,'')}</span><small>${night?'Eidolons disponibles':'Prochaine chasse à la tombée de la nuit'}</small></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-eidolon-bg>Modifier le fond</button>`:""}`;
+    const et=hubData.activityText?.eidolon||{};
+    const mainText=night?(et.nightTitle||"Nuit restante"):(et.dayTitle||"Nuit dans");
+    const subText=night?(et.nightText||"Eidolons disponibles"):(et.dayText||"Prochaine chasse à la tombée de la nuit");
+    root.innerHTML=`<div class="eidolon-glow"></div><div class="eidolon-cycle-content"><span class="eidolon-cycle-icon">${night?'🌙':'☀️'}</span><strong>${esc(mainText)}</strong><span class="eidolon-time">${fmtDuration(remaining).replace(/^0j /,'')}</span><small>${esc(subText)}</small></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-eidolon-bg>Modifier</button>`:""}`;
     root.querySelector("[data-eidolon-bg]")?.addEventListener("click",()=>openActivityBackgroundEditor("eidolon","Eidolons"));
+    root.onpointermove=(e)=>{const r=root.getBoundingClientRect();root.style.setProperty("--mx",`${((e.clientX-r.left)/r.width)*100}%`);root.style.setProperty("--my",`${((e.clientY-r.top)/r.height)*100}%`);};
+    root.onpointerleave=()=>{root.style.setProperty("--mx","50%");root.style.setProperty("--my","45%");};
   }
   function bindCompanionSearch(){const input=document.getElementById("companionSearch");if(input&&!input.dataset.bound){input.dataset.bound="1";input.addEventListener("input",renderCompanions);}}
   function injectV53SafeStyles(){
@@ -5339,8 +5367,8 @@ window.minchPreloadImage = minchPreloadImage;
       #weeklySection .weekly-task{min-width:0;box-sizing:border-box;overflow:hidden}
       .rotation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%}
       .rotation-card,.eidolon-cycle-card{position:relative;box-sizing:border-box;border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:24px;text-align:center;background:rgba(8,12,22,.72);overflow:hidden}
-      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);letter-spacing:.04em;margin:8px 0 14px;color:#7dd3fc;text-shadow:0 0 14px rgba(125,211,252,.34)}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}.rotation-card.has-activity-bg,.eidolon-cycle-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.activity-card-content{position:relative;z-index:2}.activity-bg-edit{position:absolute;right:12px;bottom:12px;z-index:4}
-      .eidolon-cycle-card{min-height:210px;display:grid;place-items:center}.eidolon-cycle-card.is-day{background:radial-gradient(circle at 50% 45%,rgba(255,190,65,.22),rgba(8,12,22,.78) 65%)}.eidolon-cycle-card.is-night{background:radial-gradient(circle at 50% 45%,rgba(104,86,255,.25),rgba(8,12,22,.8) 65%)}
+      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);letter-spacing:.04em;margin:8px 0 14px;color:#7dd3fc;text-shadow:0 0 14px rgba(125,211,252,.34)}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}.rotation-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.eidolon-cycle-card.has-activity-bg{background-image:var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.activity-card-content{position:relative;z-index:2}.activity-bg-edit{position:absolute;right:12px;bottom:12px;z-index:4}
+      .eidolon-cycle-card{--mx:50%;--my:45%;min-height:210px;display:grid;place-items:center;isolation:isolate}.eidolon-cycle-card:before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;transition:background .18s ease}.eidolon-cycle-card.is-day:before{background:radial-gradient(circle at var(--mx) var(--my),rgba(255,221,77,.40) 0,rgba(255,111,36,.24) 27%,rgba(100,18,8,.18) 52%,rgba(5,9,18,.70) 100%)}.eidolon-cycle-card.is-night:before{background:radial-gradient(circle at var(--mx) var(--my),rgba(74,205,255,.34) 0,rgba(105,75,255,.28) 30%,rgba(51,20,106,.24) 58%,rgba(5,9,18,.72) 100%)}.eidolon-cycle-card:not(.has-activity-bg).is-day{background:#160b08}.eidolon-cycle-card:not(.has-activity-bg).is-night{background:#080b1d}
       .eidolon-cycle-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}.eidolon-cycle-icon{font-size:2rem}.eidolon-cycle-content small{opacity:.75}
       @media(max-width:800px){#weeklySection .weekly-tasks,.rotation-grid{grid-template-columns:1fr}#companionsGrid .companion-info-card,#companionsGrid .hub-add-card,#companionsGrid .companion-info-card[data-card-width]{flex-basis:100%}}
     `;document.head.appendChild(st);
