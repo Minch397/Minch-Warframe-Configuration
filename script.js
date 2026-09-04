@@ -4747,6 +4747,7 @@ window.minchPreloadImage = minchPreloadImage;
     elements: [],
     tierIntro: { text:"", size:16, align:"center" },
     recentUpdatesStyle: { width:2, height:2 },
+    activityMedia: { coda:"", tenet:"", eidolon:"" },
     tierCategories: [
       {id:"warframes",title:"Warframes",text:"",icon:"",image:"",overlay:28,width:1,height:1},
       {id:"primary",title:"Armes principales",text:"",icon:"",image:"",overlay:28,width:1,height:1},
@@ -4798,6 +4799,8 @@ window.minchPreloadImage = minchPreloadImage;
     base.tierIntro={text:String(intro.text||""),size:Math.min(40,Math.max(10,Number(intro.size)||16)),align:["left","center","right"].includes(intro.align)?intro.align:"center"};
     const recentStyle=raw.recentUpdatesStyle&&typeof raw.recentUpdatesStyle==="object"?raw.recentUpdatesStyle:{};
     base.recentUpdatesStyle={width:Math.min(3,Math.max(1,Number(recentStyle.width)||2)),height:Math.min(3,Math.max(1,Number(recentStyle.height)||2))};
+    const activityMedia=raw.activityMedia&&typeof raw.activityMedia==="object"?raw.activityMedia:{};
+    base.activityMedia={coda:String(activityMedia.coda||""),tenet:String(activityMedia.tenet||""),eidolon:String(activityMedia.eidolon||"")};
     if(Array.isArray(raw.tierCategories)&&raw.tierCategories.length) base.tierCategories=raw.tierCategories.map((x,i)=>({
       id:String(x?.id||`cat_${i}`), title:String(x?.title||`Catégorie ${i+1}`), text:String(x?.text||""), icon:String(x?.icon||""), image:String(x?.image||""),
       overlay:Math.min(80,Math.max(0,Number.isFinite(Number(x?.overlay))?Number(x.overlay):28)),
@@ -5285,11 +5288,23 @@ window.minchPreloadImage = minchPreloadImage;
     return `${d}j ${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m ${String(sec).padStart(2,"0")}s`;
   }
   function getRotationChecks(){try{return JSON.parse(localStorage.getItem(ROTATION_CHECK_KEY)||"{}")||{};}catch(e){return {};}}
+  async function openActivityBackgroundEditor(kind,label){
+    const current=String(hubData.activityMedia?.[kind]||"");
+    const inputId=`hubActivityBg_${kind}_${Date.now()}`;
+    const {overlay,close,save}=editorShell(`Modifier le fond — ${label}`,`<label>Image de fond<input id="${inputId}" class="admin-input" type="file" accept="image/*"></label><label>ou URL de l'image<input id="hubActivityBgUrl" class="admin-input" value="${esc(current)}" placeholder="https://..."></label><p style="opacity:.7;margin:4px 0 0">Laissez l’URL vide pour retirer le fond personnalisé.</p>`);
+    save.onclick=async()=>{
+      let image=String(overlay.querySelector("#hubActivityBgUrl")?.value||"").trim();
+      const fileInput=overlay.querySelector(`#${inputId}`);
+      if(fileInput?.files?.[0] && typeof uploadImageInput==="function"){save.disabled=true;save.textContent="Envoi...";const uploaded=await uploadImageInput(inputId,"hub_activities");if(uploaded)image=uploaded;}
+      hubData.activityMedia=hubData.activityMedia||{coda:"",tenet:"",eidolon:""};hubData.activityMedia[kind]=image;await saveHub();close();
+    };
+  }
   function renderRotationTimers(){
     const root=document.getElementById("weaponRotations"); if(!root)return;
     const {key,next}=rotationWindow(); const all=getRotationChecks(); const checks=all[key]||{};
-    root.innerHTML=[['coda','Armes Coda','Eleanor'],['tenet','Armes Tenet','Ergo Glast']].map(([id,title,vendor])=>`<div class="rotation-card"><h3>${title}</h3><p>${vendor}</p><strong class="rotation-time">${fmtDuration(next-Date.now())}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" ${checks[id]?"checked":""}> Rotation vérifiée</label></div>`).join("");
+    root.innerHTML=[['coda','Armes Coda','Eleanor'],['tenet','Armes Tenet','Ergo Glast']].map(([id,title,vendor])=>{const bg=hubData.activityMedia?.[id]||"";return `<div class="rotation-card${bg?" has-activity-bg":""}" ${bg?`style="--activity-bg:url(\'${esc(bg)}\')"`:""}><div class="activity-card-content"><h3>${title}</h3><p>${vendor}</p><strong class="rotation-time">${fmtDuration(next-Date.now())}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" ${checks[id]?"checked":""}> Rotation vérifiée</label></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-activity-bg="${id}">Modifier le fond</button>`:""}</div>`}).join("");
     root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();latest[key]=latest[key]||{};latest[key][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
+    root.querySelectorAll("[data-activity-bg]").forEach(b=>b.onclick=()=>openActivityBackgroundEditor(b.dataset.activityBg,b.dataset.activityBg==="coda"?"Armes Coda":"Armes Tenet"));
   }
   let eidolonApiState=null;
   async function refreshEidolonApi(){
@@ -5308,12 +5323,15 @@ window.minchPreloadImage = minchPreloadImage;
     let remaining=eidolonApiState.expiry-Date.now();
     if(remaining<=0){refreshEidolonApi();remaining=0;}
     const night=eidolonApiState.night; root.classList.toggle("is-night",night);root.classList.toggle("is-day",!night);
-    root.innerHTML=`<div class="eidolon-glow"></div><div class="eidolon-cycle-content"><span class="eidolon-cycle-icon">${night?'🌙':'☀️'}</span><strong>${night?'Nuit restante':'Nuit dans'}</strong><span class="eidolon-time">${fmtDuration(remaining).replace(/^0j /,'')}</span><small>${night?'Eidolons disponibles':'Prochaine chasse à la tombée de la nuit'}</small></div>`;
+    const bg=hubData.activityMedia?.eidolon||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);else root.style.removeProperty("--activity-bg");
+    root.innerHTML=`<div class="eidolon-glow"></div><div class="eidolon-cycle-content"><span class="eidolon-cycle-icon">${night?'🌙':'☀️'}</span><strong>${night?'Nuit restante':'Nuit dans'}</strong><span class="eidolon-time">${fmtDuration(remaining).replace(/^0j /,'')}</span><small>${night?'Eidolons disponibles':'Prochaine chasse à la tombée de la nuit'}</small></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-eidolon-bg>Modifier le fond</button>`:""}`;
+    root.querySelector("[data-eidolon-bg]")?.addEventListener("click",()=>openActivityBackgroundEditor("eidolon","Eidolons"));
   }
   function bindCompanionSearch(){const input=document.getElementById("companionSearch");if(input&&!input.dataset.bound){input.dataset.bound="1";input.addEventListener("input",renderCompanions);}}
   function injectV53SafeStyles(){
     if(document.getElementById("v53SafeStyles"))return;const st=document.createElement("style");st.id="v53SafeStyles";st.textContent=`
-      .companion-search-container{max-width:900px;margin:0 auto 28px}.companion-search-container input{width:100%;box-sizing:border-box}
+      .companion-search-container{max-width:760px;margin:0 auto 30px;position:relative}.companion-search-container input{width:100%;box-sizing:border-box;padding:14px 18px 14px 46px;border:1px solid rgba(125,211,252,.42);border-radius:14px;background:linear-gradient(135deg,rgba(5,12,23,.88),rgba(20,15,38,.82));color:#eefaff;outline:none;box-shadow:inset 0 0 18px rgba(56,189,248,.06),0 0 18px rgba(99,102,241,.08);font:inherit;letter-spacing:.02em}.companion-search-container:before{content:"⌕";position:absolute;left:17px;top:50%;transform:translateY(-52%);font-size:24px;color:#7dd3fc;pointer-events:none}.companion-search-container input::placeholder{color:rgba(220,235,255,.48)}.companion-search-container input:focus{border-color:rgba(125,211,252,.85);box-shadow:inset 0 0 20px rgba(56,189,248,.1),0 0 24px rgba(56,189,248,.16)}
+      #companionsGrid{display:flex!important;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:20px}#companionsGrid .companion-info-card,#companionsGrid .hub-add-card{flex:0 0 calc((100% - 40px)/3);max-width:100%;grid-column:auto!important}#companionsGrid .companion-info-card[data-card-width="2"]{flex-basis:calc((100% - 20px)*2/3)}#companionsGrid .companion-info-card[data-card-width="3"]{flex-basis:100%}
       #weeklySection .activities-main-head,#weeklySection .activity-subhead{text-align:center;margin-left:auto;margin-right:auto}
       #weeklySection .activity-block{width:min(1500px,96%);margin:30px auto 46px}
       #weeklySection .weekly-reset-info{text-align:center;margin-left:auto;margin-right:auto}
@@ -5321,10 +5339,10 @@ window.minchPreloadImage = minchPreloadImage;
       #weeklySection .weekly-task{min-width:0;box-sizing:border-box;overflow:hidden}
       .rotation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%}
       .rotation-card,.eidolon-cycle-card{position:relative;box-sizing:border-box;border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:24px;text-align:center;background:rgba(8,12,22,.72);overflow:hidden}
-      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);letter-spacing:.04em;margin:8px 0 14px}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}
+      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);letter-spacing:.04em;margin:8px 0 14px;color:#7dd3fc;text-shadow:0 0 14px rgba(125,211,252,.34)}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}.rotation-card.has-activity-bg,.eidolon-cycle-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.activity-card-content{position:relative;z-index:2}.activity-bg-edit{position:absolute;right:12px;bottom:12px;z-index:4}
       .eidolon-cycle-card{min-height:210px;display:grid;place-items:center}.eidolon-cycle-card.is-day{background:radial-gradient(circle at 50% 45%,rgba(255,190,65,.22),rgba(8,12,22,.78) 65%)}.eidolon-cycle-card.is-night{background:radial-gradient(circle at 50% 45%,rgba(104,86,255,.25),rgba(8,12,22,.8) 65%)}
       .eidolon-cycle-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}.eidolon-cycle-icon{font-size:2rem}.eidolon-cycle-content small{opacity:.75}
-      @media(max-width:800px){#weeklySection .weekly-tasks,.rotation-grid{grid-template-columns:1fr}}
+      @media(max-width:800px){#weeklySection .weekly-tasks,.rotation-grid{grid-template-columns:1fr}#companionsGrid .companion-info-card,#companionsGrid .hub-add-card,#companionsGrid .companion-info-card[data-card-width]{flex-basis:100%}}
     `;document.head.appendChild(st);
   }
 
