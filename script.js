@@ -4847,6 +4847,8 @@ window.minchPreloadImage = minchPreloadImage;
       if (el) el.classList.toggle("is-hidden", key!==currentHubView);
     });
     window.scrollTo({top:0,behavior:"smooth"});
+    const hubVideo=document.getElementById("homeBgVideo");
+    if(hubVideo){hubVideo.style.display="block";hubVideo.style.visibility="visible";hubVideo.style.opacity="1";if(hubVideo.paused)hubVideo.play().catch(()=>{});}
     if(currentHubView==="warframes" && typeof filterWarframes==="function") setTimeout(()=>filterWarframes(),0);
     if(currentHubView==="weekly") renderWeekly();
     if(currentHubView==="tiers"){ currentTierCategory=null; document.getElementById("tierCategoryView")?.classList.add("is-hidden"); document.getElementById("tierCategoriesGrid")?.classList.remove("is-hidden"); document.getElementById("tierIntroText")?.classList.remove("is-hidden"); renderTierCategories(); }
@@ -5085,17 +5087,22 @@ window.minchPreloadImage = minchPreloadImage;
     save.onclick=async()=>{let image=String(overlay.querySelector("#hubCatImage").value||"").trim(); if(overlay.querySelector(`#${inputId}`)?.files?.[0]&&typeof uploadImageInput==="function"){save.disabled=true;save.textContent="Envoi...";const u=await uploadImageInput(inputId,"hub_companion_categories");if(u)image=u;} hubData.companionCategories[name]={text:String(overlay.querySelector("#hubCatText").value||"").trim(),image,width:Number(overlay.querySelector("#hubCatWidth").value)||1,height:Number(overlay.querySelector("#hubCatHeight").value)||1};await saveHub();close();};
   }
   function renderCompanions(){
-    const root=document.getElementById("companionsGrid"), cats=document.getElementById("companionCategoriesGrid"), search=document.getElementById("companionSearch"), title=document.getElementById("companionCategoryTitle"); if(!root||!cats)return;
-    const q=String(search?.value||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    const grouped={}; COMPANION_FAMILIES.forEach(f=>grouped[f]=[]); hubData.companions.forEach(x=>(grouped[companionFamily(x.title)]||grouped.Autres).push(x));
-    cats.innerHTML=COMPANION_FAMILIES.filter(f=>grouped[f].length||hubData.companionCategories[f]).map(f=>{const d=hubData.companionCategories[f]||{};return `<article class="companion-category-card" data-family="${esc(f)}" data-card-width="${Math.min(3,Math.max(1,Number(d.width)||1))}" data-card-height="${Math.min(3,Math.max(1,Number(d.height)||1))}" ${d.image?`style="background-image:url('${esc(d.image)}')"`:""}><h3>${esc(f)} <small>(${grouped[f].length})</small></h3><p>${esc(d.text||`Voir les ${f.toLowerCase()}`)}</p>${window.isAdminMode?`<div class="hub-admin-actions"><button class="hub-admin-btn" data-cat-edit>Modifier</button></div>`:""}</article>`}).join("");
-    cats.querySelectorAll("[data-family]").forEach(c=>c.onclick=e=>{if(e.target.closest("[data-cat-edit]"))return;activeCompanionFamily=c.dataset.family;renderCompanions();}); cats.querySelectorAll("[data-cat-edit]").forEach(b=>b.onclick=e=>{e.stopPropagation();openCompanionCategoryEditor(b.closest("[data-family]").dataset.family)});
+    const root=document.getElementById("companionsGrid"), search=document.getElementById("companionSearch");
+    if(!root)return;
+    const norm=v=>String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    const q=norm(search?.value).trim();
+    // Retour au fonctionnement simple : tous les compagnons restent affichés ensemble.
+    // La recherche regarde le nom, la description ET la famille détectée depuis le nom
+    // (ex. "Sentinelle - Nautilus Prime", "Kubrow - Huras").
     let items=hubData.companions;
-    if(q){items=items.filter(x=>{const hay=`${x.title} ${x.text} ${companionFamily(x.title)}`.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");return hay.includes(q)}); activeCompanionFamily="";}
-    else if(activeCompanionFamily)items=items.filter(x=>companionFamily(x.title)===activeCompanionFamily);
-    if(title){title.classList.toggle("is-hidden",!activeCompanionFamily||!!q);title.innerHTML=activeCompanionFamily?`<h2>${esc(activeCompanionFamily)}</h2><p>${items.length} compagnon${items.length>1?"s":""}</p>`:"";}
+    if(q){
+      items=items.filter(x=>norm(`${x.title} ${x.text} ${companionFamily(x.title)}`).includes(q));
+    }
     root.innerHTML=items.map(x=>`<article class="companion-info-card" data-id="${esc(x.id)}" data-card-width="${Math.min(3,Math.max(1,Number(x.width)||1))}" data-card-height="${Math.min(3,Math.max(1,Number(x.height)||1))}"><div class="companion-info-layout">${x.image?`<button class="hub-media-thumb companion-media-thumb" type="button" data-companion-view><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></button>`:`<div class="hub-media-placeholder companion-media-thumb">🐾</div>`}<div class="companion-info-copy"><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></div></div>${modifiedBadge(x.updatedAt)}${window.isAdminMode?`<div class="hub-admin-actions"><button class="hub-admin-btn" data-companion-edit>Modifier</button><button class="hub-admin-btn danger" data-companion-delete>Supprimer</button></div>`:""}</article>`).join("")+(window.isAdminMode?`<button class="hub-add-card" type="button" data-companion-add>＋ Ajouter un compagnon</button>`:items.length?"":"<div class='companion-info-card'><h3>Aucun résultat</h3></div>");
-    root.querySelector("[data-companion-add]")?.addEventListener("click",()=>openCompanionEditor()); root.querySelectorAll("[data-companion-view]").forEach(b=>b.onclick=()=>{const item=hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id);if(item?.image)openTierViewer(item.image,item.title);}); root.querySelectorAll("[data-companion-edit]").forEach(b=>b.onclick=()=>openCompanionEditor(hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id))); root.querySelectorAll("[data-companion-delete]").forEach(b=>b.onclick=async()=>{hubData.companions=hubData.companions.filter(x=>x.id!==b.closest("[data-id]").dataset.id);await saveHub();});
+    root.querySelector("[data-companion-add]")?.addEventListener("click",()=>openCompanionEditor());
+    root.querySelectorAll("[data-companion-view]").forEach(b=>b.onclick=()=>{const item=hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id);if(item?.image)openTierViewer(item.image,item.title);});
+    root.querySelectorAll("[data-companion-edit]").forEach(b=>b.onclick=()=>openCompanionEditor(hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id)));
+    root.querySelectorAll("[data-companion-delete]").forEach(b=>b.onclick=async()=>{hubData.companions=hubData.companions.filter(x=>x.id!==b.closest("[data-id]").dataset.id);await saveHub();});
     if(search&&!search.dataset.bound){search.dataset.bound="1";search.addEventListener("input",()=>renderCompanions());}
   }
 

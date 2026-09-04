@@ -30,7 +30,13 @@
   </script>
 
   <style id="v53HubStyles">
-    .companion-search-wrap{max-width:760px;margin:0 auto 22px}.companion-search-wrap input{width:100%}.companion-category-grid{margin-bottom:22px}.companion-category-card{position:relative;overflow:hidden;min-height:170px;cursor:pointer;border-radius:16px;background:rgba(12,16,28,.82);background-size:cover;background-position:center}.companion-category-card:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,7,14,.18),rgba(4,7,14,.88))}.companion-category-card>*{position:relative;z-index:1}.companion-category-card h3,.companion-category-card p{padding-left:16px;padding-right:16px}.companion-category-title{margin-top:8px}.activity-block{margin:22px 0 34px;padding:18px;border:1px solid rgba(150,120,255,.28);border-radius:18px;background:rgba(8,10,20,.58)}.activity-block>h2{margin-top:0}.rotation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.rotation-card{padding:16px;border-radius:14px;background:rgba(18,21,36,.88);border:1px solid rgba(155,125,255,.28)}.rotation-card strong{display:block;font-size:1.35rem;margin:7px 0}.rotation-check{display:flex;gap:8px;align-items:center;margin-top:10px}.eidolon-cycle-card{position:relative;overflow:hidden;min-height:210px;border-radius:18px;background-size:cover;background-position:center;border:1px solid rgba(150,120,255,.32)}.eidolon-cycle-card:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,10,22,.88),rgba(7,10,22,.38))}.eidolon-cycle-card.is-day:after,.eidolon-cycle-card.is-night:after{content:"";position:absolute;inset:0;pointer-events:none}.eidolon-cycle-card.is-day:after{background:rgba(255,174,55,.17)}.eidolon-cycle-card.is-night:after{background:rgba(83,83,255,.20)}.eidolon-inner{position:relative;z-index:2;padding:24px}.eidolon-time{font-size:2rem;font-weight:800;display:block;margin:8px 0}.eidolon-admin{position:relative;z-index:3;margin-top:12px}.is-hidden{display:none!important}@media(max-width:700px){.eidolon-time{font-size:1.5rem}}
+    .companion-search-wrap{max-width:760px;margin:0 auto 22px}.companion-search-wrap input{width:100%}.activity-block{margin:22px 0 34px;padding:18px;border:1px solid rgba(150,120,255,.28);border-radius:18px;background:rgba(8,10,20,.58)}.activity-block>h2{margin-top:0}.rotation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.rotation-card{padding:16px;border-radius:14px;background:rgba(18,21,36,.88);border:1px solid rgba(155,125,255,.28)}.rotation-card strong{display:block;font-size:1.35rem;margin:7px 0}.rotation-check{display:flex;gap:8px;align-items:center;margin-top:10px}.eidolon-cycle-card{position:relative;overflow:hidden;min-height:210px;border-radius:18px;background-size:cover;background-position:center;border:1px solid rgba(150,120,255,.32)}.eidolon-cycle-card:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,10,22,.88),rgba(7,10,22,.38))}.eidolon-cycle-card.is-day:after,.eidolon-cycle-card.is-night:after{content:"";position:absolute;inset:0;pointer-events:none}.eidolon-cycle-card.is-day:after{background:rgba(255,174,55,.17)}.eidolon-cycle-card.is-night:after{background:rgba(83,83,255,.20)}.eidolon-inner{position:relative;z-index:2;padding:24px}.eidolon-time{font-size:2rem;font-weight:800;display:block;margin:8px 0}.eidolon-admin{position:relative;z-index:3;margin-top:12px}.is-hidden{display:none!important}#homeBgVideo{display:block!important;visibility:visible!important;opacity:1!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;object-fit:cover!important;z-index:-3!important;pointer-events:none!important}
+    #weeklySection{max-width:1100px;margin-left:auto!important;margin-right:auto!important}
+    #weeklySection>.hub-section-head{text-align:center;margin-left:auto;margin-right:auto}
+    #weeklySection>.activity-block{max-width:960px;margin:22px auto 34px;text-align:center}
+    #weeklySection .weekly-tasks{text-align:left}
+    #weeklySection .rotation-check{justify-content:center}
+    @media(max-width:700px){.eidolon-time{font-size:1.5rem}}
   </style>
 </head>
 
@@ -222,10 +228,8 @@
 
     <section id="companionsSection" class="hub-section is-hidden">
       <button class="hub-back" type="button" data-hub-back>← Accueil</button>
-      <div class="hub-section-head"><h1>Compagnons</h1><p>Recherche par nom ou par famille.</p></div>
+      <div class="hub-section-head"><h1>Compagnons</h1><p>Recherche directement un compagnon ou un type de compagnon.</p></div>
       <div class="companion-search-wrap"><input id="companionSearch" class="admin-input" type="search" placeholder="Rechercher : Nautilus, Kubrow, Sentinelle..."></div>
-      <div id="companionCategoriesGrid" class="content-card-grid companion-category-grid"></div>
-      <div id="companionCategoryTitle" class="hub-section-head companion-category-title is-hidden"></div>
       <div id="companionsGrid" class="content-card-grid"></div>
     </section>
 
