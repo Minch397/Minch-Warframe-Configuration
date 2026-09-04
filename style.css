@@ -4012,3 +4012,20 @@ body.build-open .buildpage::-webkit-scrollbar-track,
   box-shadow: 0 0 0 3px rgba(255,255,255,.025);
   cursor: text;
 }
+
+/* ---------- V53 FIX : fond vidéo accueil ---------- */
+#homeBgVideo.bg-video-home{
+  position:fixed !important;
+  inset:0 !important;
+  width:100vw !important;
+  height:100vh !important;
+  min-width:100% !important;
+  min-height:100% !important;
+  object-fit:cover !important;
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  z-index:0 !important;
+  pointer-events:none !important;
+}
+.screen-overlay, body::before{ pointer-events:none !important; }

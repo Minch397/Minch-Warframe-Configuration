@@ -6512,3 +6512,35 @@ window.minchPreloadImage = minchPreloadImage;
   window.minchFindWarframeById = findById;
   window.minchEnsureStrictIds = ensureIdsStrict;
 })();
+
+/* ---------- V53 FIX : relance robuste du fond vidéo ---------- */
+(function ensureHomeBackgroundVideo(){
+  const video = document.getElementById('homeBgVideo');
+  if (!video) return;
+
+  video.muted = true;
+  video.defaultMuted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.autoplay = true;
+
+  function startVideo(){
+    if (!video.getAttribute('src') && !video.querySelector('source')) {
+      video.src = 'media/home-loop.mp4';
+    }
+    const p = video.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  }
+
+  if (video.readyState >= 2) startVideo();
+  else {
+    video.addEventListener('loadedmetadata', startVideo, { once:true });
+    video.addEventListener('canplay', startVideo, { once:true });
+    video.load();
+  }
+
+  window.addEventListener('pageshow', startVideo);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) startVideo();
+  });
+})();
