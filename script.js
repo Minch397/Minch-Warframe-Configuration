@@ -4738,14 +4738,12 @@ window.minchPreloadImage = minchPreloadImage;
       warframes: { title:"Configurations Warframe", text:"Accéder aux builds, compagnons, armes et détails de chaque configuration.", icon:"⚙️", image:"", overlay:28, width:2, height:1 },
       guides: { title:"Guides & Conseils", text:"Retrouver les conseils et guides utiles pour Warframe.", icon:"📘", image:"", overlay:28, width:1, height:1 },
       tiers: { title:"Tier Lists", text:"Consulter les classements Warframes, armes et autres catégories.", icon:"🏆", image:"", overlay:28, width:1, height:1 },
-      weekly: { title:"Activités & Rotations", text:"Tâches hebdomadaires, rotations Coda / Tenet et cycle des Eidolons.", icon:"🔄", image:"", overlay:28, width:1, height:1 },
+      weekly: { title:"Tâches hebdomadaires", text:"Cocher les activités de la semaine avant la réinitialisation du lundi à 2 h.", icon:"✅", image:"", overlay:28, width:1, height:1 },
       companions: { title:"Compagnons", text:"Voir quel compagnon choisir et comprendre rapidement son utilité.", icon:"🐾", image:"", overlay:28, width:1, height:1 },
       elements: { title:"Éléments & Statuts", text:"Comprendre les éléments, les statuts et les faiblesses des ennemis.", icon:"🧪", image:"", overlay:28, width:1, height:1 }
     },
     guides: [],
     companions: [],
-    companionCategories: {},
-    rotations: { eidolonImage:"" },
     elements: [],
     tierIntro: { text:"", size:16, align:"center" },
     recentUpdatesStyle: { width:2, height:2 },
@@ -4793,8 +4791,6 @@ window.minchPreloadImage = minchPreloadImage;
     });
     base.guides = Array.isArray(raw.guides) ? raw.guides.map((x,i)=>({id:String(x?.id||`guide_${Date.now()}_${i}`),title:String(x?.title||"Guide"),text:String(x?.text||""),image:String(x?.image||""),width:Math.min(3,Math.max(1,Number(x?.width)||1)),height:Math.min(3,Math.max(1,Number(x?.height)||1)),updatedAt:Number(x?.updatedAt)||0})) : [];
     base.companions = Array.isArray(raw.companions) ? raw.companions.map((x,i)=>({id:String(x?.id||`companion_${Date.now()}_${i}`),title:String(x?.title||"Compagnon"),text:String(x?.text||""),image:String(x?.image||""),width:Math.min(3,Math.max(1,Number(x?.width)||1)),height:Math.min(3,Math.max(1,Number(x?.height)||1)),updatedAt:Number(x?.updatedAt)||0})) : [];
-    base.companionCategories = raw.companionCategories && typeof raw.companionCategories === "object" ? raw.companionCategories : {};
-    base.rotations = raw.rotations && typeof raw.rotations === "object" ? {eidolonImage:String(raw.rotations.eidolonImage||"")} : {eidolonImage:""};
     base.elements = Array.isArray(raw.elements) ? raw.elements.map((x,i)=>({id:String(x?.id||`element_${Date.now()}_${i}`),title:String(x?.title||"Élément / Statut"),text:String(x?.text||""),image:String(x?.image||""),width:Math.min(3,Math.max(1,Number(x?.width)||1)),height:Math.min(3,Math.max(1,Number(x?.height)||1)),updatedAt:Number(x?.updatedAt)||0})) : [];
     const intro=raw.tierIntro&&typeof raw.tierIntro==="object"?raw.tierIntro:{};
     base.tierIntro={text:String(intro.text||""),size:Math.min(40,Math.max(10,Number(intro.size)||16)),align:["left","center","right"].includes(intro.align)?intro.align:"center"};
@@ -4847,8 +4843,6 @@ window.minchPreloadImage = minchPreloadImage;
       if (el) el.classList.toggle("is-hidden", key!==currentHubView);
     });
     window.scrollTo({top:0,behavior:"smooth"});
-    const hubVideo=document.getElementById("homeBgVideo");
-    if(hubVideo){hubVideo.style.display="block";hubVideo.style.visibility="visible";hubVideo.style.opacity="1";if(hubVideo.paused)hubVideo.play().catch(()=>{});}
     if(currentHubView==="warframes" && typeof filterWarframes==="function") setTimeout(()=>filterWarframes(),0);
     if(currentHubView==="weekly") renderWeekly();
     if(currentHubView==="tiers"){ currentTierCategory=null; document.getElementById("tierCategoryView")?.classList.add("is-hidden"); document.getElementById("tierCategoriesGrid")?.classList.remove("is-hidden"); document.getElementById("tierIntroText")?.classList.remove("is-hidden"); renderTierCategories(); }
@@ -5066,44 +5060,13 @@ window.minchPreloadImage = minchPreloadImage;
     };
   }
 
-  const COMPANION_FAMILIES=["Sentinelles","Kubrows","Kavats","Vulpaphylas","Prédasites","MOA","Molosses","Autres"];
-  function companionFamily(title){
-    const t=String(title||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    if(t.includes("sentinelle")||/carrier|dethcube|diriga|djinn|helios|nautilus|oxylus|shade|taxon|wyrm/.test(t))return "Sentinelles";
-    if(t.includes("kubrow")||t.includes("chargeur helminth"))return "Kubrows";
-    if(t.includes("kavat")||/adarza|smeeta|vasca/.test(t))return "Kavats";
-    if(t.includes("vulpaphyla"))return "Vulpaphylas";
-    if(t.includes("predas")||t.includes("prédas"))return "Prédasites";
-    if(/(^|\s|-)moa(\s|-|$)/.test(t)||/lambeo|oloro|para|nychus/.test(t))return "MOA";
-    if(t.includes("molosse")||/bhaira|dorma|hec/.test(t))return "Molosses";
-    const prefix=String(title||"").split("-")[0].trim().toLowerCase();
-    if(prefix.includes("sentin"))return "Sentinelles"; if(prefix.includes("kubrow"))return "Kubrows"; if(prefix.includes("kavat"))return "Kavats";
-    return "Autres";
-  }
-  let activeCompanionFamily="";
-  function openCompanionCategoryEditor(name){
-    const existing=hubData.companionCategories[name]||{text:"",image:"",width:1,height:1}; const inputId=`hubCompCat_${Date.now()}`;
-    const {overlay,close,save}=editorShell(`Modifier — ${name}`,`<label>Texte de la catégorie<textarea id="hubCatText" class="admin-textarea">${esc(existing.text||"")}</textarea></label><label>Largeur<select id="hubCatWidth" class="admin-input"><option value="1" ${Number(existing.width||1)===1?"selected":""}>1 colonne</option><option value="2" ${Number(existing.width||1)===2?"selected":""}>2 colonnes</option><option value="3" ${Number(existing.width||1)===3?"selected":""}>3 colonnes</option></select></label><label>Hauteur<select id="hubCatHeight" class="admin-input"><option value="1" ${Number(existing.height||1)===1?"selected":""}>1</option><option value="2" ${Number(existing.height||1)===2?"selected":""}>2</option><option value="3" ${Number(existing.height||1)===3?"selected":""}>3</option></select></label><label>Image de la catégorie<input id="${inputId}" class="admin-input" type="file" accept="image/*"></label><label>ou URL<input id="hubCatImage" class="admin-input" value="${esc(existing.image||"")}"></label>`);
-    save.onclick=async()=>{let image=String(overlay.querySelector("#hubCatImage").value||"").trim(); if(overlay.querySelector(`#${inputId}`)?.files?.[0]&&typeof uploadImageInput==="function"){save.disabled=true;save.textContent="Envoi...";const u=await uploadImageInput(inputId,"hub_companion_categories");if(u)image=u;} hubData.companionCategories[name]={text:String(overlay.querySelector("#hubCatText").value||"").trim(),image,width:Number(overlay.querySelector("#hubCatWidth").value)||1,height:Number(overlay.querySelector("#hubCatHeight").value)||1};await saveHub();close();};
-  }
   function renderCompanions(){
-    const root=document.getElementById("companionsGrid"), search=document.getElementById("companionSearch");
-    if(!root)return;
-    const norm=v=>String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    const q=norm(search?.value).trim();
-    // Retour au fonctionnement simple : tous les compagnons restent affichés ensemble.
-    // La recherche regarde le nom, la description ET la famille détectée depuis le nom
-    // (ex. "Sentinelle - Nautilus Prime", "Kubrow - Huras").
-    let items=hubData.companions;
-    if(q){
-      items=items.filter(x=>norm(`${x.title} ${x.text} ${companionFamily(x.title)}`).includes(q));
-    }
-    root.innerHTML=items.map(x=>`<article class="companion-info-card" data-id="${esc(x.id)}" data-card-width="${Math.min(3,Math.max(1,Number(x.width)||1))}" data-card-height="${Math.min(3,Math.max(1,Number(x.height)||1))}"><div class="companion-info-layout">${x.image?`<button class="hub-media-thumb companion-media-thumb" type="button" data-companion-view><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></button>`:`<div class="hub-media-placeholder companion-media-thumb">🐾</div>`}<div class="companion-info-copy"><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></div></div>${modifiedBadge(x.updatedAt)}${window.isAdminMode?`<div class="hub-admin-actions"><button class="hub-admin-btn" data-companion-edit>Modifier</button><button class="hub-admin-btn danger" data-companion-delete>Supprimer</button></div>`:""}</article>`).join("")+(window.isAdminMode?`<button class="hub-add-card" type="button" data-companion-add>＋ Ajouter un compagnon</button>`:items.length?"":"<div class='companion-info-card'><h3>Aucun résultat</h3></div>");
+    const root=document.getElementById("companionsGrid"); if(!root)return;
+    root.innerHTML=hubData.companions.map(x=>`<article class="companion-info-card" data-id="${esc(x.id)}" data-card-width="${Math.min(3,Math.max(1,Number(x.width)||1))}" data-card-height="${Math.min(3,Math.max(1,Number(x.height)||1))}"><div class="companion-info-layout">${x.image?`<button class="hub-media-thumb companion-media-thumb" type="button" data-companion-view><img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy"></button>`:`<div class="hub-media-placeholder companion-media-thumb">🐾</div>`}<div class="companion-info-copy"><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p></div></div>${modifiedBadge(x.updatedAt)}${window.isAdminMode?`<div class="hub-admin-actions"><button class="hub-admin-btn" data-companion-edit>Modifier</button><button class="hub-admin-btn danger" data-companion-delete>Supprimer</button></div>`:""}</article>`).join("")+(window.isAdminMode?`<button class="hub-add-card" type="button" data-companion-add>＋ Ajouter un compagnon</button>`:hubData.companions.length?"":"<div class='companion-info-card'><h3>Aucun compagnon pour le moment</h3><p>Les compagnons ajoutés depuis le mode Admin apparaîtront ici.</p></div>");
     root.querySelector("[data-companion-add]")?.addEventListener("click",()=>openCompanionEditor());
     root.querySelectorAll("[data-companion-view]").forEach(b=>b.onclick=()=>{const item=hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id);if(item?.image)openTierViewer(item.image,item.title);});
     root.querySelectorAll("[data-companion-edit]").forEach(b=>b.onclick=()=>openCompanionEditor(hubData.companions.find(x=>x.id===b.closest("[data-id]").dataset.id)));
     root.querySelectorAll("[data-companion-delete]").forEach(b=>b.onclick=async()=>{hubData.companions=hubData.companions.filter(x=>x.id!==b.closest("[data-id]").dataset.id);await saveHub();});
-    if(search&&!search.dataset.bound){search.dataset.bound="1";search.addEventListener("input",()=>renderCompanions());}
   }
 
   function openElementEditor(item){
@@ -5277,15 +5240,6 @@ window.minchPreloadImage = minchPreloadImage;
   }
   function getWeeklyChecks(){try{return JSON.parse(localStorage.getItem(WEEKLY_LOCAL_KEY)||"{}")||{};}catch(e){return{};}}
   function saveWeeklyChecks(v){try{localStorage.setItem(WEEKLY_LOCAL_KEY,JSON.stringify(v));}catch(e){}}
-  const ROTATION_CHECK_KEY="minch-rotation-checks-v1";
-  function fmtRemain(ms){const t=Math.max(0,Math.floor(ms/1000)),d=Math.floor(t/86400),h=Math.floor(t%86400/3600),m=Math.floor(t%3600/60),sec=t%60;return `${d?d+"j ":""}${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m ${String(sec).padStart(2,"0")}s`;}
-  function fourDayRotation(anchor){const step=4*86400000,now=Date.now(),a=new Date(anchor).getTime(),n=Math.floor((now-a)/step)+1;return {key:String(a+n*step-step),next:a+n*step};}
-  function rotationChecks(){try{return JSON.parse(localStorage.getItem(ROTATION_CHECK_KEY)||"{}")||{};}catch(e){return{}}} function saveRotationChecks(x){try{localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(x))}catch(e){}}
-  function renderWeaponRotations(){const root=document.getElementById("weaponRotations");if(!root)return;const coda=fourDayRotation("2025-03-23T00:00:00Z"),tenet=fourDayRotation("2015-12-03T00:00:00Z"),checks=rotationChecks();const cards=[{id:"coda",name:"Armes Coda — Eleanor",r:coda},{id:"tenet",name:"Armes Tenet — Ergo Glast",r:tenet}];root.innerHTML=cards.map(x=>`<div class="rotation-card"><span>${esc(x.name)}</span><strong>${fmtRemain(x.r.next-Date.now())}</strong><small>Prochaine rotation : ${new Date(x.r.next).toLocaleString("fr-FR")}</small><label class="rotation-check"><input type="checkbox" data-rotation-check="${x.id}" ${checks[x.id+":"+x.r.key]?"checked":""}> Déjà vérifiée pour cette rotation</label></div>`).join("");root.querySelectorAll("[data-rotation-check]").forEach(el=>el.onchange=()=>{const x=cards.find(a=>a.id===el.dataset.rotationCheck);checks[x.id+":"+x.r.key]=el.checked;saveRotationChecks(checks)});}
-  let cetusState=null,cetusFetchAt=0;
-  async function refreshCetus(){if(Date.now()-cetusFetchAt<30000&&cetusState)return;cetusFetchAt=Date.now();try{const r=await fetch("https://api.warframestat.us/pc/cetusCycle");if(!r.ok)throw 0;const d=await r.json();cetusState={isDay:!!d.isDay,expiry:new Date(d.expiry).getTime()};}catch(e){/* garde la dernière valeur connue */}}
-  function openEidolonImageEditor(){const existing=hubData.rotations?.eidolonImage||"",inputId=`eidolonImg_${Date.now()}`;const {overlay,close,save}=editorShell("Image du cycle Eidolon",`<label>Image<input id="${inputId}" class="admin-input" type="file" accept="image/*"></label><label>ou URL<input id="eidolonImageUrl" class="admin-input" value="${esc(existing)}"></label>`);save.onclick=async()=>{let image=String(overlay.querySelector("#eidolonImageUrl").value||"").trim();if(overlay.querySelector(`#${inputId}`)?.files?.[0]&&typeof uploadImageInput==="function"){save.disabled=true;save.textContent="Envoi...";const u=await uploadImageInput(inputId,"hub_eidolon");if(u)image=u;}hubData.rotations={...(hubData.rotations||{}),eidolonImage:image};await saveHub();close();};}
-  async function renderEidolon(){const root=document.getElementById("eidolonCycle");if(!root)return;await refreshCetus();if(!cetusState){root.innerHTML=`<div class="eidolon-inner"><strong>Cycle Eidolon indisponible</strong><p>Impossible de synchroniser le cycle pour le moment.</p></div>`;return;}let remain=cetusState.expiry-Date.now();if(remain<=0){cetusFetchAt=0;await refreshCetus();remain=cetusState.expiry-Date.now();}const img=hubData.rotations?.eidolonImage||"";root.classList.toggle("is-day",cetusState.isDay);root.classList.toggle("is-night",!cetusState.isDay);root.style.backgroundImage=img?`url('${img.replace(/'/g,"%27")}')`:"";root.innerHTML=`<div class="eidolon-inner"><span>${cetusState.isDay?"☀️ Jour — Eidolons indisponibles":"🌙 Nuit — Eidolons disponibles"}</span><strong class="eidolon-time">${cetusState.isDay?"Nuit dans":"Nuit restante"} : ${fmtRemain(remain)}</strong><small>Synchronisé avec le cycle des Plaines d’Eidolon</small>${window.isAdminMode?`<div class="eidolon-admin"><button class="hub-admin-btn" data-eidolon-image>Modifier l’image</button></div>`:""}</div>`;root.querySelector("[data-eidolon-image]")?.addEventListener("click",openEidolonImageEditor);}
   function renderWeekly(){
     const root=document.getElementById("weeklyTasks"), info=document.getElementById("weeklyResetInfo");if(!root)return;
     const {key,next}=weeklyWindow(); const all=getWeeklyChecks(); const checks=all[key]&&typeof all[key]==="object"?all[key]:{};
@@ -5305,14 +5259,12 @@ window.minchPreloadImage = minchPreloadImage;
     root.querySelector("[data-task-add]")?.addEventListener("click",()=>openTaskEditor());
     root.querySelectorAll("[data-task-edit]").forEach(b=>b.onclick=()=>openTaskEditor(hubData.weekly.find(x=>x.id===b.closest("[data-id]").dataset.id)));
     root.querySelectorAll("[data-task-delete]").forEach(b=>b.onclick=async()=>{hubData.weekly=hubData.weekly.filter(x=>x.id!==b.closest("[data-id]").dataset.id);await saveHub();});
-    renderWeaponRotations(); renderEidolon();
   }
 
   function renderFooter(){
     document.querySelectorAll(".hub-footer-column").forEach((el)=>{const i=Number(el.dataset.footerIndex)||0;const d=hubData.footer[i]||{title:"",text:""};el.innerHTML=`<h3>${esc(d.title)}</h3><p>${esc(d.text)}</p>${window.isAdminMode?`<button class="hub-admin-btn hub-footer-edit" type="button">Modifier</button>`:""}`;el.querySelector(".hub-footer-edit")?.addEventListener("click",()=>openFooterEditor(i));});
   }
   function renderAllHubContent(){renderHubCards();renderGuides();renderCompanions();renderElements();renderTiers();renderWeekly();renderRecentUpdates();renderFooter();}
-  setInterval(()=>{if(currentHubView==="weekly"){renderWeaponRotations();renderEidolon();}},1000);
 
   function initHub(){
     loadHubLocal();
@@ -5486,7 +5438,7 @@ window.minchPreloadImage = minchPreloadImage;
     if(tiers.length)buckets.push(tiers);
 
     const weeklyCard=document.querySelector('.hub-card[data-hub-card-key="weekly"]');
-    buckets.push([{type:"weekly",title:"Activités & Rotations",sub:"Hebdomadaires, Coda / Tenet et Eidolons",bg:bgOf(weeklyCard)}]);
+    buckets.push([{type:"weekly",title:"Tâches hebdomadaires",sub:"Activités de la semaine",bg:bgOf(weeklyCard)}]);
     return buckets.filter(b=>b.length);
   }
 

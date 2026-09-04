@@ -28,16 +28,6 @@
     "url": ""
   }
   </script>
-
-  <style id="v53HubStyles">
-    .companion-search-wrap{max-width:760px;margin:0 auto 22px}.companion-search-wrap input{width:100%}.activity-block{margin:22px 0 34px;padding:18px;border:1px solid rgba(150,120,255,.28);border-radius:18px;background:rgba(8,10,20,.58)}.activity-block>h2{margin-top:0}.rotation-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.rotation-card{padding:16px;border-radius:14px;background:rgba(18,21,36,.88);border:1px solid rgba(155,125,255,.28)}.rotation-card strong{display:block;font-size:1.35rem;margin:7px 0}.rotation-check{display:flex;gap:8px;align-items:center;margin-top:10px}.eidolon-cycle-card{position:relative;overflow:hidden;min-height:210px;border-radius:18px;background-size:cover;background-position:center;border:1px solid rgba(150,120,255,.32)}.eidolon-cycle-card:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,10,22,.88),rgba(7,10,22,.38))}.eidolon-cycle-card.is-day:after,.eidolon-cycle-card.is-night:after{content:"";position:absolute;inset:0;pointer-events:none}.eidolon-cycle-card.is-day:after{background:rgba(255,174,55,.17)}.eidolon-cycle-card.is-night:after{background:rgba(83,83,255,.20)}.eidolon-inner{position:relative;z-index:2;padding:24px}.eidolon-time{font-size:2rem;font-weight:800;display:block;margin:8px 0}.eidolon-admin{position:relative;z-index:3;margin-top:12px}.is-hidden{display:none!important}#homeBgVideo{display:block!important;visibility:visible!important;opacity:1!important;position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;object-fit:cover!important;z-index:-3!important;pointer-events:none!important}
-    #weeklySection{max-width:1100px;margin-left:auto!important;margin-right:auto!important}
-    #weeklySection>.hub-section-head{text-align:center;margin-left:auto;margin-right:auto}
-    #weeklySection>.activity-block{max-width:960px;margin:22px auto 34px;text-align:center}
-    #weeklySection .weekly-tasks{text-align:left}
-    #weeklySection .rotation-check{justify-content:center}
-    @media(max-width:700px){.eidolon-time{font-size:1.5rem}}
-  </style>
 </head>
 
 <body>
@@ -169,8 +159,8 @@
         </button>
         <button class="hub-card" type="button" data-hub-target="weekly" data-hub-card-key="weekly">
           <span class="hub-card-icon">✅</span>
-          <span class="hub-card-title">Activités &amp; Rotations</span>
-          <span class="hub-card-text">Tâches hebdomadaires, rotations Coda / Tenet et cycle des Eidolons.</span>
+          <span class="hub-card-title">Tâches hebdomadaires</span>
+          <span class="hub-card-text">Cocher les activités de la semaine avant la réinitialisation du lundi à 2 h.</span>
         </button>
         <button class="hub-card" type="button" data-hub-target="companions" data-hub-card-key="companions">
           <span class="hub-card-icon">🐾</span>
@@ -228,8 +218,7 @@
 
     <section id="companionsSection" class="hub-section is-hidden">
       <button class="hub-back" type="button" data-hub-back>← Accueil</button>
-      <div class="hub-section-head"><h1>Compagnons</h1><p>Recherche directement un compagnon ou un type de compagnon.</p></div>
-      <div class="companion-search-wrap"><input id="companionSearch" class="admin-input" type="search" placeholder="Rechercher : Nautilus, Kubrow, Sentinelle..."></div>
+      <div class="hub-section-head"><h1>Compagnons</h1><p>Quel compagnon choisir et pourquoi.</p></div>
       <div id="companionsGrid" class="content-card-grid"></div>
     </section>
 
@@ -241,10 +230,9 @@
 
     <section id="weeklySection" class="hub-section is-hidden">
       <button class="hub-back" type="button" data-hub-back>← Accueil</button>
-      <div class="hub-section-head"><h1>Activités &amp; Rotations</h1><p>Les principaux resets et cycles à surveiller.</p></div>
-      <div class="activity-block"><h2>Tâches hebdomadaires</h2><div id="weeklyResetInfo" class="weekly-reset-info"></div><div id="weeklyTasks" class="weekly-tasks"></div></div>
-      <div class="activity-block"><h2>Rotation armes Coda &amp; Tenet</h2><div id="weaponRotations" class="rotation-grid"></div></div>
-      <div class="activity-block"><h2>Eidolons — Plaines d’Eidolon</h2><div id="eidolonCycle" class="eidolon-cycle-card"></div></div>
+      <div class="hub-section-head"><h1>Tâches hebdomadaires</h1><p>Réinitialisation automatique chaque lundi à 2 h.</p></div>
+      <div id="weeklyResetInfo" class="weekly-reset-info"></div>
+      <div id="weeklyTasks" class="weekly-tasks"></div>
     </section>
   </div>
 
