@@ -5322,11 +5322,18 @@ window.minchPreloadImage = minchPreloadImage;
       await saveHub();close();
     };
   }
+  function repeatingRotationWindow(timerOffset=0,nowMs=Date.now()){
+    const period=96*60*60*1000;
+    const anchor=Date.UTC(2025,2,23,0,0,0)+timerOffset;
+    const index=Math.floor((nowMs-anchor)/period);
+    const start=anchor+index*period;
+    return {key:String(start),next:start+period};
+  }
   function renderRotationTimers(){
     const root=document.getElementById("weaponRotations"); if(!root)return;
-    const {key,next}=rotationWindow(); const all=getRotationChecks(); const checks=all[key]||{};
-    root.innerHTML=[['coda','Armes Coda','Eleanor',-86400000],['tenet','Armes Tenet','Ergo Glast',172800000]].map(([id,defaultTitle,defaultVendor,timerOffset])=>{const bg=hubData.activityMedia?.[id]||"";const txt=hubData.activityText?.[id]||{};const title=txt.title||defaultTitle,vendor=txt.subtitle||defaultVendor;return `<div class="rotation-card${bg?" has-activity-bg":""}" ${bg?`style="--activity-bg:url(\'${esc(bg)}\')"`:""}><div class="activity-card-content"><h3>${esc(title)}</h3><p>${esc(vendor)}</p><strong class="rotation-time">${fmtDuration(next-Date.now()+timerOffset)}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" ${checks[id]?"checked":""}> Arme à 60 % dans la rotation vérifiée</label></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-activity-bg="${id}">Modifier</button>`:""}</div>`}).join("");
-    root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();latest[key]=latest[key]||{};latest[key][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
+    const now=Date.now(); const all=getRotationChecks();
+    root.innerHTML=[['coda','Armes Coda','Eleanor',-86400000],['tenet','Armes Tenet','Ergo Glast',172800000]].map(([id,defaultTitle,defaultVendor,timerOffset])=>{const {key,next}=repeatingRotationWindow(timerOffset,now);const checks=all[key]||{};const bg=hubData.activityMedia?.[id]||"";const txt=hubData.activityText?.[id]||{};const title=txt.title||defaultTitle,vendor=txt.subtitle||defaultVendor;return `<div class="rotation-card${bg?" has-activity-bg":""}" ${bg?`style="--activity-bg:url(\'${esc(bg)}\')"`:""}><div class="activity-card-content"><h3>${esc(title)}</h3><p>${esc(vendor)}</p><strong class="rotation-time">${fmtDuration(next-now)}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" data-rotation-key="${key}" ${checks[id]?"checked":""}> Arme à 60 % dans la rotation vérifiée</label></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-activity-bg="${id}">Modifier</button>`:""}</div>`}).join("");
+    root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();const rotationKey=cb.dataset.rotationKey;latest[rotationKey]=latest[rotationKey]||{};latest[rotationKey][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
     root.querySelectorAll("[data-activity-bg]").forEach(b=>b.onclick=()=>openActivityBackgroundEditor(b.dataset.activityBg,b.dataset.activityBg==="coda"?"Armes Coda":"Armes Tenet"));
   }
   let eidolonApiState=null;
