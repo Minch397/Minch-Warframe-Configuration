@@ -5336,22 +5336,42 @@ window.minchPreloadImage = minchPreloadImage;
     root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();const rotationKey=cb.dataset.rotationKey;latest[rotationKey]=latest[rotationKey]||{};latest[rotationKey][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
     root.querySelectorAll("[data-activity-bg]").forEach(b=>b.onclick=()=>openActivityBackgroundEditor(b.dataset.activityBg,b.dataset.activityBg==="coda"?"Armes Coda":"Armes Tenet"));
   }
+  const EIDOLON_CACHE_KEY="warframeHubEidolonCycleV63";
   let eidolonApiState=null;
+  try{
+    const cached=JSON.parse(localStorage.getItem(EIDOLON_CACHE_KEY)||"null");
+    if(cached && Number.isFinite(Number(cached.expiry))) eidolonApiState={night:Boolean(cached.night),expiry:Number(cached.expiry)};
+  }catch(e){}
+  function advanceEidolonState(now=Date.now()){
+    if(!eidolonApiState)return;
+    while(eidolonApiState.expiry<=now){
+      eidolonApiState.night=!eidolonApiState.night;
+      eidolonApiState.expiry+=eidolonApiState.night ? 50*60*1000 : 100*60*1000;
+    }
+  }
   async function refreshEidolonApi(){
     try{
       const r=await fetch("https://api.warframestat.us/pc/cetusCycle",{cache:"no-store"});
       if(!r.ok)throw new Error("HTTP "+r.status);
       const d=await r.json();
       const expiry=Date.parse(d.expiry||"");
-      if(Number.isFinite(expiry)) eidolonApiState={night:Boolean(d.isNight),expiry};
-    }catch(e){ /* garde le dernier état valide si l'API est momentanément indisponible */ }
+      if(Number.isFinite(expiry)){
+        eidolonApiState={night:Boolean(d.isNight),expiry};
+        localStorage.setItem(EIDOLON_CACHE_KEY,JSON.stringify(eidolonApiState));
+      }
+    }catch(e){ advanceEidolonState(); }
     renderEidolonCycle();
   }
   function renderEidolonCycle(){
     const root=document.getElementById("eidolonCycle");if(!root)return;
-    if(!eidolonApiState){root.className="eidolon-cycle-card";root.innerHTML=`<div class="eidolon-cycle-content"><strong>Synchronisation du cycle de Cetus…</strong></div>`;return;}
-    let remaining=eidolonApiState.expiry-Date.now();
-    if(remaining<=0){refreshEidolonApi();remaining=0;}
+    if(!eidolonApiState){
+      root.className="eidolon-cycle-card";
+      const bg=hubData.activityMedia?.eidolon||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);
+      root.innerHTML=`<div class="eidolon-cycle-content"><strong>Nuit dans</strong><span class="eidolon-time">00:00:00</span></div>`;
+      refreshEidolonApi();return;
+    }
+    advanceEidolonState();
+    let remaining=Math.max(0,eidolonApiState.expiry-Date.now());
     const night=eidolonApiState.night; root.classList.toggle("is-night",night);root.classList.toggle("is-day",!night);
     const bg=hubData.activityMedia?.eidolon||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);else root.style.removeProperty("--activity-bg");
     const et=hubData.activityText?.eidolon||{};
