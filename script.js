@@ -5336,43 +5336,23 @@ window.minchPreloadImage = minchPreloadImage;
     root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();const rotationKey=cb.dataset.rotationKey;latest[rotationKey]=latest[rotationKey]||{};latest[rotationKey][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
     root.querySelectorAll("[data-activity-bg]").forEach(b=>b.onclick=()=>openActivityBackgroundEditor(b.dataset.activityBg,b.dataset.activityBg==="coda"?"Armes Coda":"Armes Tenet"));
   }
-  const EIDOLON_CACHE_KEY="warframeHubEidolonCycleV63";
-  let eidolonApiState=null;
-  try{
-    const cached=JSON.parse(localStorage.getItem(EIDOLON_CACHE_KEY)||"null");
-    if(cached && Number.isFinite(Number(cached.expiry))) eidolonApiState={night:Boolean(cached.night),expiry:Number(cached.expiry)};
-  }catch(e){}
-  function advanceEidolonState(now=Date.now()){
-    if(!eidolonApiState)return;
-    while(eidolonApiState.expiry<=now){
-      eidolonApiState.night=!eidolonApiState.night;
-      eidolonApiState.expiry+=eidolonApiState.night ? 50*60*1000 : 100*60*1000;
-    }
-  }
-  async function refreshEidolonApi(){
-    try{
-      const r=await fetch("https://api.warframestat.us/pc/cetusCycle",{cache:"no-store"});
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      const d=await r.json();
-      const expiry=Date.parse(d.expiry||"");
-      if(Number.isFinite(expiry)){
-        eidolonApiState={night:Boolean(d.isNight),expiry};
-        localStorage.setItem(EIDOLON_CACHE_KEY,JSON.stringify(eidolonApiState));
-      }
-    }catch(e){ advanceEidolonState(); }
-    renderEidolonCycle();
+  // V64 — cycle Eidolon 100 % local : aucune API, aucun écran de synchronisation.
+  // Point de référence UTC = début d'une phase de JOUR.
+  const EIDOLON_DAY_MS=100*60*1000;
+  const EIDOLON_NIGHT_MS=50*60*1000;
+  const EIDOLON_CYCLE_MS=EIDOLON_DAY_MS+EIDOLON_NIGHT_MS;
+  const EIDOLON_DAY_ANCHOR_UTC=Date.parse("2026-09-06T14:57:00Z");
+  function getLocalEidolonState(now=Date.now()){
+    const pos=((now-EIDOLON_DAY_ANCHOR_UTC)%EIDOLON_CYCLE_MS+EIDOLON_CYCLE_MS)%EIDOLON_CYCLE_MS;
+    const night=pos>=EIDOLON_DAY_MS;
+    const remaining=night ? EIDOLON_CYCLE_MS-pos : EIDOLON_DAY_MS-pos;
+    return {night,remaining};
   }
   function renderEidolonCycle(){
     const root=document.getElementById("eidolonCycle");if(!root)return;
-    if(!eidolonApiState){
-      root.className="eidolon-cycle-card";
-      const bg=hubData.activityMedia?.eidolon||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);
-      root.innerHTML=`<div class="eidolon-cycle-content"><strong>Nuit dans</strong><span class="eidolon-time">00:00:00</span></div>`;
-      refreshEidolonApi();return;
-    }
-    advanceEidolonState();
-    let remaining=Math.max(0,eidolonApiState.expiry-Date.now());
-    const night=eidolonApiState.night; root.classList.toggle("is-night",night);root.classList.toggle("is-day",!night);
+    const localState=getLocalEidolonState();
+    const remaining=localState.remaining;
+    const night=localState.night; root.classList.toggle("is-night",night);root.classList.toggle("is-day",!night);
     const bg=hubData.activityMedia?.eidolon||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);else root.style.removeProperty("--activity-bg");
     const et=hubData.activityText?.eidolon||{};
     const mainText=night?(et.nightTitle||"Nuit restante"):(et.dayTitle||"Nuit dans");
@@ -5399,9 +5379,9 @@ window.minchPreloadImage = minchPreloadImage;
     `;document.head.appendChild(st);
   }
 
-  function renderAllHubContent(){injectV53SafeStyles();bindCompanionSearch();if(!eidolonApiState)refreshEidolonApi();renderHubCards();renderGuides();renderCompanions();renderElements();renderTiers();renderWeekly();renderRecentUpdates();renderFooter();}
+  function renderAllHubContent(){injectV53SafeStyles();bindCompanionSearch();renderHubCards();renderGuides();renderCompanions();renderElements();renderTiers();renderWeekly();renderRecentUpdates();renderFooter();}
   setInterval(()=>{if(currentHubView==="weekly"){renderRotationTimers();renderEidolonCycle();}},1000);
-  setInterval(refreshEidolonApi,60000);
+
 
   function initHub(){
     loadHubLocal();
