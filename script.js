@@ -5341,7 +5341,7 @@ window.minchPreloadImage = minchPreloadImage;
   const EIDOLON_DAY_MS=100*60*1000;
   const EIDOLON_NIGHT_MS=50*60*1000;
   const EIDOLON_CYCLE_MS=EIDOLON_DAY_MS+EIDOLON_NIGHT_MS;
-  const EIDOLON_DAY_ANCHOR_UTC=Date.parse("2026-09-06T17:01:00Z"); // V65 recalibré : nuit à 19:01 France le 06/09/2026
+  const EIDOLON_DAY_ANCHOR_UTC=Date.parse("2026-09-08T17:20:00Z"); // V67 : début du jour calibré sur la fin de nuit à 19:20 France le 08/09/2026
   function getLocalEidolonState(now=Date.now()){
     const pos=((now-EIDOLON_DAY_ANCHOR_UTC)%EIDOLON_CYCLE_MS+EIDOLON_CYCLE_MS)%EIDOLON_CYCLE_MS;
     const night=pos>=EIDOLON_DAY_MS;
