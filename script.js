@@ -4747,10 +4747,11 @@ window.minchPreloadImage = minchPreloadImage;
     elements: [],
     tierIntro: { text:"", size:16, align:"center" },
     recentUpdatesStyle: { width:2, height:2 },
-    activityMedia: { coda:"", tenet:"", eidolon:"" },
+    activityMedia: { coda:"", tenet:"", baro:"", eidolon:"" },
     activityText: {
       coda:{title:"Armes Coda",subtitle:"Eleanor"},
       tenet:{title:"Armes Tenet",subtitle:"Ergo Glast"},
+      baro:{awayTitle:"Arrivée du marchand dans",presentTitle:"Départ du marchand dans",awayText:"Baro Ki'Teer — Marchand du Néant",presentText:"Baro Ki'Teer est présent"},
       eidolon:{dayTitle:"Nuit dans",nightTitle:"Nuit restante",dayText:"Prochaine chasse à la tombée de la nuit",nightText:"Eidolons disponibles"}
     },
     tierCategories: [
@@ -4805,11 +4806,12 @@ window.minchPreloadImage = minchPreloadImage;
     const recentStyle=raw.recentUpdatesStyle&&typeof raw.recentUpdatesStyle==="object"?raw.recentUpdatesStyle:{};
     base.recentUpdatesStyle={width:Math.min(3,Math.max(1,Number(recentStyle.width)||2)),height:Math.min(3,Math.max(1,Number(recentStyle.height)||2))};
     const activityMedia=raw.activityMedia&&typeof raw.activityMedia==="object"?raw.activityMedia:{};
-    base.activityMedia={coda:String(activityMedia.coda||""),tenet:String(activityMedia.tenet||""),eidolon:String(activityMedia.eidolon||"")};
+    base.activityMedia={coda:String(activityMedia.coda||""),tenet:String(activityMedia.tenet||""),baro:String(activityMedia.baro||""),eidolon:String(activityMedia.eidolon||"")};
     const activityText=raw.activityText&&typeof raw.activityText==="object"?raw.activityText:{};
     base.activityText={
       coda:{title:String(activityText.coda?.title||"Armes Coda"),subtitle:String(activityText.coda?.subtitle||"Eleanor")},
       tenet:{title:String(activityText.tenet?.title||"Armes Tenet"),subtitle:String(activityText.tenet?.subtitle||"Ergo Glast")},
+      baro:{awayTitle:String(activityText.baro?.awayTitle||"Arrivée du marchand dans"),presentTitle:String(activityText.baro?.presentTitle||"Départ du marchand dans"),awayText:String(activityText.baro?.awayText||"Baro Ki'Teer — Marchand du Néant"),presentText:String(activityText.baro?.presentText||"Baro Ki'Teer est présent")},
       eidolon:{dayTitle:String(activityText.eidolon?.dayTitle||"Nuit dans"),nightTitle:String(activityText.eidolon?.nightTitle||"Nuit restante"),dayText:String(activityText.eidolon?.dayText||"Prochaine chasse à la tombée de la nuit"),nightText:String(activityText.eidolon?.nightText||"Eidolons disponibles")}
     };
     if(Array.isArray(raw.tierCategories)&&raw.tierCategories.length) base.tierCategories=raw.tierCategories.map((x,i)=>({
@@ -5278,6 +5280,7 @@ window.minchPreloadImage = minchPreloadImage;
     root.querySelectorAll("[data-task-edit]").forEach(b=>b.onclick=()=>openTaskEditor(hubData.weekly.find(x=>x.id===b.closest("[data-id]").dataset.id)));
     root.querySelectorAll("[data-task-delete]").forEach(b=>b.onclick=async()=>{hubData.weekly=hubData.weekly.filter(x=>x.id!==b.closest("[data-id]").dataset.id);await saveHub();});
     renderRotationTimers();
+    renderBaroCycle();
     renderEidolonCycle();
   }
 
@@ -5307,7 +5310,11 @@ window.minchPreloadImage = minchPreloadImage;
       <label>Texte pendant le jour<input id="hubActDayTitle" class="admin-input" value="${esc(txt.dayTitle||"Nuit dans")}"></label>
       <label>Sous-texte pendant le jour<input id="hubActDayText" class="admin-input" value="${esc(txt.dayText||"Prochaine chasse à la tombée de la nuit")}"></label>
       <label>Texte pendant la nuit<input id="hubActNightTitle" class="admin-input" value="${esc(txt.nightTitle||"Nuit restante")}"></label>
-      <label>Sous-texte pendant la nuit<input id="hubActNightText" class="admin-input" value="${esc(txt.nightText||"Eidolons disponibles")}"></label>` : `
+      <label>Sous-texte pendant la nuit<input id="hubActNightText" class="admin-input" value="${esc(txt.nightText||"Eidolons disponibles")}"></label>` : kind==="baro" ? `
+      <label>Texte quand Baro est absent<input id="hubBaroAwayTitle" class="admin-input" value="${esc(txt.awayTitle||"Arrivée du marchand dans")}"></label>
+      <label>Sous-texte absent<input id="hubBaroAwayText" class="admin-input" value="${esc(txt.awayText||"Baro Ki'Teer — Marchand du Néant")}"></label>
+      <label>Texte quand Baro est présent<input id="hubBaroPresentTitle" class="admin-input" value="${esc(txt.presentTitle||"Départ du marchand dans")}"></label>
+      <label>Sous-texte présent<input id="hubBaroPresentText" class="admin-input" value="${esc(txt.presentText||"Baro Ki'Teer est présent")}"></label>` : `
       <label>Titre<input id="hubActTitle" class="admin-input" value="${esc(txt.title||label)}"></label>
       <label>Sous-titre<input id="hubActSubtitle" class="admin-input" value="${esc(txt.subtitle||"")}"></label>`;
     const {overlay,close,save}=editorShell(`Modifier — ${label}`,`${textFields}<label>Image de fond<input id="${inputId}" class="admin-input" type="file" accept="image/*"></label><label>ou URL de l'image<input id="hubActivityBgUrl" class="admin-input" value="${esc(current)}" placeholder="https://..."></label><p style="opacity:.7;margin:4px 0 0">Laissez l’URL vide pour retirer le fond personnalisé.</p>`);
@@ -5315,9 +5322,10 @@ window.minchPreloadImage = minchPreloadImage;
       let image=String(overlay.querySelector("#hubActivityBgUrl")?.value||"").trim();
       const fileInput=overlay.querySelector(`#${inputId}`);
       if(fileInput?.files?.[0] && typeof uploadImageInput==="function"){save.disabled=true;save.textContent="Envoi...";const uploaded=await uploadImageInput(inputId,"hub_activities");if(uploaded)image=uploaded;}
-      hubData.activityMedia=hubData.activityMedia||{coda:"",tenet:"",eidolon:""};hubData.activityMedia[kind]=image;
+      hubData.activityMedia=hubData.activityMedia||{coda:"",tenet:"",baro:"",eidolon:""};hubData.activityMedia[kind]=image;
       hubData.activityText=hubData.activityText||{};
       if(kind==="eidolon") hubData.activityText.eidolon={dayTitle:String(overlay.querySelector("#hubActDayTitle")?.value||"Nuit dans").trim(),nightTitle:String(overlay.querySelector("#hubActNightTitle")?.value||"Nuit restante").trim(),dayText:String(overlay.querySelector("#hubActDayText")?.value||"").trim(),nightText:String(overlay.querySelector("#hubActNightText")?.value||"").trim()};
+      else if(kind==="baro") hubData.activityText.baro={awayTitle:String(overlay.querySelector("#hubBaroAwayTitle")?.value||"Arrivée du marchand dans").trim(),presentTitle:String(overlay.querySelector("#hubBaroPresentTitle")?.value||"Départ du marchand dans").trim(),awayText:String(overlay.querySelector("#hubBaroAwayText")?.value||"").trim(),presentText:String(overlay.querySelector("#hubBaroPresentText")?.value||"").trim()};
       else hubData.activityText[kind]={title:String(overlay.querySelector("#hubActTitle")?.value||label).trim(),subtitle:String(overlay.querySelector("#hubActSubtitle")?.value||"").trim()};
       await saveHub();close();
     };
@@ -5335,6 +5343,34 @@ window.minchPreloadImage = minchPreloadImage;
     root.innerHTML=[['coda','Armes Coda','Eleanor',-86400000],['tenet','Armes Tenet','Ergo Glast',172800000]].map(([id,defaultTitle,defaultVendor,timerOffset])=>{const {key,next}=repeatingRotationWindow(timerOffset,now);const checks=all[key]||{};const bg=hubData.activityMedia?.[id]||"";const txt=hubData.activityText?.[id]||{};const title=txt.title||defaultTitle,vendor=txt.subtitle||defaultVendor;return `<div class="rotation-card${bg?" has-activity-bg":""}" ${bg?`style="--activity-bg:url(\'${esc(bg)}\')"`:""}><div class="activity-card-content"><h3>${esc(title)}</h3><p>${esc(vendor)}</p><strong class="rotation-time">${fmtDuration(next-now)}</strong><label class="rotation-check"><input type="checkbox" data-rotation-check="${id}" data-rotation-key="${key}" ${checks[id]?"checked":""}> Arme à 60 % dans la rotation vérifiée</label></div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-activity-bg="${id}">Modifier</button>`:""}</div>`}).join("");
     root.querySelectorAll("[data-rotation-check]").forEach(cb=>cb.onchange=()=>{const latest=getRotationChecks();const rotationKey=cb.dataset.rotationKey;latest[rotationKey]=latest[rotationKey]||{};latest[rotationKey][cb.dataset.rotationCheck]=cb.checked;localStorage.setItem(ROTATION_CHECK_KEY,JSON.stringify(latest));});
     root.querySelectorAll("[data-activity-bg]").forEach(b=>b.onclick=()=>openActivityBackgroundEditor(b.dataset.activityBg,b.dataset.activityBg==="coda"?"Armes Coda":"Armes Tenet"));
+  }
+  // V68 — Baro Ki'Teer : cycle local de 14 jours, présence pendant 48 h.
+  // Calibrage utilisateur du 18/09/2026 : départ annoncé dans ~1 j 17 h.
+  const BARO_CYCLE_MS=14*24*60*60*1000;
+  const BARO_STAY_MS=48*60*60*1000;
+  const BARO_DEPARTURE_ANCHOR_UTC=Date.parse("2026-09-20T12:00:00Z");
+  const BARO_ARRIVAL_ANCHOR_UTC=BARO_DEPARTURE_ANCHOR_UTC-BARO_STAY_MS;
+  const BARO_CHECK_KEY="minch-baro-checks-v1";
+  function getBaroState(now=Date.now()){
+    const pos=((now-BARO_ARRIVAL_ANCHOR_UTC)%BARO_CYCLE_MS+BARO_CYCLE_MS)%BARO_CYCLE_MS;
+    const present=pos<BARO_STAY_MS;
+    const remaining=present ? BARO_STAY_MS-pos : BARO_CYCLE_MS-pos;
+    const visitKey=String(Math.floor((now-BARO_ARRIVAL_ANCHOR_UTC)/BARO_CYCLE_MS));
+    return {present,remaining,visitKey};
+  }
+  function getBaroChecks(){try{return JSON.parse(localStorage.getItem(BARO_CHECK_KEY)||"{}")||{};}catch(e){return {};} }
+  function renderBaroCycle(){
+    const root=document.getElementById("baroCycle");if(!root)return;
+    const state=getBaroState();
+    const bg=hubData.activityMedia?.baro||"";root.classList.toggle("has-activity-bg",Boolean(bg));if(bg)root.style.setProperty("--activity-bg",`url("${bg.replace(/"/g,"%22")}")`);else root.style.removeProperty("--activity-bg");
+    const bt=hubData.activityText?.baro||{};
+    const title=state.present?(bt.presentTitle||"Départ du marchand dans"):(bt.awayTitle||"Arrivée du marchand dans");
+    const sub=state.present?(bt.presentText||"Baro Ki'Teer est présent"):(bt.awayText||"Baro Ki'Teer — Marchand du Néant");
+    const checks=getBaroChecks();
+    const check=state.present?`<label class="rotation-check baro-check"><input type="checkbox" data-baro-check="${esc(state.visitKey)}" ${checks[state.visitKey]?"checked":""}> Marché de Baro vérifié</label>`:"";
+    root.innerHTML=`<div class="eidolon-cycle-content"><strong>${esc(title)}</strong><span class="eidolon-time">${fmtDuration(state.remaining)}</span><small>${esc(sub)}</small>${check}</div>${window.isAdminMode?`<button class="hub-admin-btn activity-bg-edit" type="button" data-baro-bg>Modifier</button>`:""}`;
+    root.querySelector("[data-baro-bg]")?.addEventListener("click",()=>openActivityBackgroundEditor("baro","Baro Ki'Teer"));
+    root.querySelector("[data-baro-check]")?.addEventListener("change",e=>{const c=getBaroChecks();c[e.target.dataset.baroCheck]=e.target.checked;localStorage.setItem(BARO_CHECK_KEY,JSON.stringify(c));});
   }
   // V64 — cycle Eidolon 100 % local : aucune API, aucun écran de synchronisation.
   // Point de référence UTC = début d'une phase de JOUR.
@@ -5371,16 +5407,16 @@ window.minchPreloadImage = minchPreloadImage;
       #weeklySection .weekly-tasks{width:100%;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
       #weeklySection .weekly-task{min-width:0;box-sizing:border-box;overflow:hidden}
       .rotation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;width:100%}
-      .rotation-card,.eidolon-cycle-card{position:relative;box-sizing:border-box;border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:24px;text-align:center;background:rgba(8,12,22,.72);overflow:hidden}
-      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);font-family:inherit;font-weight:800;line-height:1.05;letter-spacing:.075em;font-variant-numeric:tabular-nums;margin:8px 0 14px;color:#7dd3fc;text-shadow:0 0 8px rgba(125,211,252,.22)}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}.rotation-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.eidolon-cycle-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.activity-card-content{position:relative;z-index:2}.activity-bg-edit{position:absolute;right:12px;bottom:12px;z-index:4}
-      .eidolon-cycle-card{min-height:210px;display:grid;place-items:center;isolation:isolate}.eidolon-cycle-card:before{display:none!important;content:none!important}.eidolon-cycle-card:not(.has-activity-bg).is-day,.eidolon-cycle-card:not(.has-activity-bg).is-night{background:rgba(8,12,22,.72)}
-      .eidolon-cycle-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;text-align:center}.eidolon-cycle-content strong,.eidolon-cycle-content small,.eidolon-time{text-align:center}.eidolon-cycle-content small{opacity:.82}
+      .rotation-card,.eidolon-cycle-card,.baro-cycle-card{position:relative;box-sizing:border-box;border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:24px;text-align:center;background:rgba(8,12,22,.72);overflow:hidden}
+      .rotation-card h3{margin:0 0 4px}.rotation-card p{margin:0 0 14px;opacity:.75}.rotation-time,.eidolon-time{display:block;font-size:clamp(1.35rem,3vw,2.15rem);font-family:inherit;font-weight:800;line-height:1.05;letter-spacing:.075em;font-variant-numeric:tabular-nums;margin:8px 0 14px;color:#7dd3fc;text-shadow:0 0 8px rgba(125,211,252,.22)}.rotation-check{display:inline-flex;gap:8px;align-items:center;justify-content:center}.rotation-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.eidolon-cycle-card.has-activity-bg,.baro-cycle-card.has-activity-bg{background-image:linear-gradient(rgba(5,9,18,.62),rgba(5,9,18,.78)),var(--activity-bg)!important;background-size:cover!important;background-position:center!important}.activity-card-content{position:relative;z-index:2}.activity-bg-edit{position:absolute;right:12px;bottom:12px;z-index:4}
+      .eidolon-cycle-card,.baro-cycle-card{min-height:210px;display:grid;place-items:center;isolation:isolate}.eidolon-cycle-card:before{display:none!important;content:none!important}.eidolon-cycle-card:not(.has-activity-bg).is-day,.eidolon-cycle-card:not(.has-activity-bg).is-night{background:rgba(8,12,22,.72)}
+      .eidolon-cycle-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;text-align:center}.eidolon-cycle-content strong,.eidolon-cycle-content small,.eidolon-time{text-align:center}.eidolon-cycle-content small{opacity:.82}.baro-check{margin-top:14px}
       @media(max-width:800px){#weeklySection .weekly-tasks,.rotation-grid{grid-template-columns:1fr}#companionsGrid .companion-info-card,#companionsGrid .hub-add-card,#companionsGrid .companion-info-card[data-card-width]{flex-basis:100%}}
     `;document.head.appendChild(st);
   }
 
   function renderAllHubContent(){injectV53SafeStyles();bindCompanionSearch();renderHubCards();renderGuides();renderCompanions();renderElements();renderTiers();renderWeekly();renderRecentUpdates();renderFooter();}
-  setInterval(()=>{if(currentHubView==="weekly"){renderRotationTimers();renderEidolonCycle();}},1000);
+  setInterval(()=>{if(currentHubView==="weekly"){renderRotationTimers();renderBaroCycle();renderEidolonCycle();}},1000);
 
 
   function initHub(){
