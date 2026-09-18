@@ -5348,7 +5348,7 @@ window.minchPreloadImage = minchPreloadImage;
   // Calibrage utilisateur du 18/09/2026 : départ annoncé dans ~1 j 17 h.
   const BARO_CYCLE_MS=14*24*60*60*1000;
   const BARO_STAY_MS=48*60*60*1000;
-  const BARO_DEPARTURE_ANCHOR_UTC=Date.parse("2026-09-20T12:00:00Z");
+  const BARO_DEPARTURE_ANCHOR_UTC=Date.parse("2026-09-20T13:00:00Z");
   const BARO_ARRIVAL_ANCHOR_UTC=BARO_DEPARTURE_ANCHOR_UTC-BARO_STAY_MS;
   const BARO_CHECK_KEY="minch-baro-checks-v1";
   function getBaroState(now=Date.now()){
