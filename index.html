@@ -136,6 +136,16 @@
         <p>Configurations, guides, tier lists et suivi hebdomadaire.</p>
       </header>
 
+      <section id="featuredSection" class="featured-section" aria-label="À la une">
+        <div class="featured-heading"><h2>À LA UNE</h2><span></span></div>
+        <div class="featured-carousel-wrap">
+          <button id="featuredPrev" class="featured-arrow featured-prev" type="button" aria-label="Précédent">‹</button>
+          <div id="featuredCarousel" class="featured-carousel"></div>
+          <button id="featuredNext" class="featured-arrow featured-next" type="button" aria-label="Suivant">›</button>
+        </div>
+        <button id="featuredAdd" class="featured-add" type="button">＋ Ajouter une actualité</button>
+      </section>
+
       <section class="recent-updates-section" aria-label="Dernières modifications">
         <h2>Dernières modifications</h2>
         <div id="recentUpdatesGrid" class="recent-updates-grid"></div>
@@ -274,7 +284,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-<script type="module" src="script.js?v=V70-weekly-layout-fix"></script>
+<script type="module" src="script.js?v=V71-featured-carousel"></script>
 </body>
 </html>
 
