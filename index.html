@@ -140,20 +140,12 @@
         <div class="featured-heading"><h2>À LA UNE</h2><span></span></div>
         <div class="featured-carousel-wrap">
           <div id="featuredCarousel" class="featured-carousel"></div>
-        </div>
-        <div id="featuredNav" class="featured-nav" hidden>
-          <button id="featuredFirst" class="featured-nav-btn" type="button" aria-label="Aller au début">≪</button>
-          <button id="featuredPrev" class="featured-nav-btn" type="button" aria-label="Actualité précédente">‹</button>
-          <input id="featuredRange" class="featured-range" type="range" min="0" max="1000" value="0" aria-label="Défilement des actualités">
-          <button id="featuredNext" class="featured-nav-btn" type="button" aria-label="Actualité suivante">›</button>
-          <button id="featuredLast" class="featured-nav-btn" type="button" aria-label="Aller à la fin">≫</button>
+          <div id="featuredNav" class="featured-nav" hidden>
+            <button id="featuredPrev" class="featured-nav-btn featured-nav-prev" type="button" aria-label="Actualité précédente">‹</button>
+            <button id="featuredNext" class="featured-nav-btn featured-nav-next" type="button" aria-label="Actualité suivante">›</button>
+          </div>
         </div>
         <button id="featuredAdd" class="featured-add" type="button">＋ Ajouter une actualité</button>
-      </section>
-
-      <section class="recent-updates-section" aria-label="Dernières modifications">
-        <h2>Dernières modifications</h2><div class="recent-updates-heading-line" aria-hidden="true"></div>
-        <div id="recentUpdatesGrid" class="recent-updates-grid"></div>
       </section>
 
       <div class="hub-grid">
@@ -188,6 +180,11 @@
           <span class="hub-card-text">Comprendre les éléments, les statuts et les faiblesses des ennemis.</span>
         </button>
       </div>
+
+      <section class="recent-updates-section" aria-label="Dernières modifications">
+        <h2>Dernières modifications</h2><div class="recent-updates-heading-line" aria-hidden="true"></div>
+        <div id="recentUpdatesGrid" class="recent-updates-grid"></div>
+      </section>
 
       <footer id="hubFooter" class="hub-footer">
         <div class="hub-footer-inner">
@@ -289,7 +286,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
-<script type="module" src="script.js?v=V72-featured-navigation"></script>
+<script type="module" src="script.js?v=V73-featured-navigation"></script>
 </body>
 </html>
 

@@ -6632,17 +6632,14 @@ window.minchPreloadImage = minchPreloadImage;
   });
 })();
 
-/* ---------- V72 : À LA UNE / NAVIGATION + RESET ACCUEIL ---------- */
+/* ---------- V73 : À LA UNE / FLÈCHES AU SURVOL + RESET ACCUEIL ---------- */
 (function initFeaturedCarousel(){
   const root=document.getElementById('featuredCarousel');
   const section=document.getElementById('featuredSection');
   const addBtn=document.getElementById('featuredAdd');
   const nav=document.getElementById('featuredNav');
-  const first=document.getElementById('featuredFirst');
   const prev=document.getElementById('featuredPrev');
-  const range=document.getElementById('featuredRange');
   const next=document.getElementById('featuredNext');
-  const last=document.getElementById('featuredLast');
   if(!root||!section) return;
 
   const STYLE=document.createElement('style');
@@ -6654,9 +6651,9 @@ window.minchPreloadImage = minchPreloadImage;
     .featured-card::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,7,13,.88) 0%,rgba(2,7,13,.48) 45%,rgba(2,7,13,.08) 78%),linear-gradient(0deg,rgba(2,7,13,.72),transparent 55%);pointer-events:none}
     .featured-copy{position:absolute;z-index:1;left:clamp(20px,4vw,58px);bottom:clamp(22px,4vw,48px);max-width:min(650px,72%);text-shadow:0 2px 10px #000}.featured-copy h3{margin:0 0 9px;font-size:clamp(1.4rem,2.4vw,2.5rem);color:#fff}.featured-copy p{margin:0;color:#dceaf5;font-size:clamp(.9rem,1.2vw,1.08rem);line-height:1.45;white-space:pre-line}
     .featured-admin{position:absolute;z-index:3;right:12px;top:12px;display:flex;gap:7px}.featured-admin button,.featured-add{border:1px solid rgba(105,204,255,.38);background:rgba(5,17,29,.9);color:#dff5ff;padding:8px 11px;border-radius:7px;cursor:pointer}.featured-admin .danger{color:#ff9aa5;border-color:rgba(255,90,110,.4)}
-    .featured-add{display:none;margin:8px 0 0}.featured-nav{display:flex;align-items:center;justify-content:center;gap:8px;width:min(680px,72%);margin:8px auto 0}.featured-nav[hidden]{display:none}.featured-nav-btn{width:34px;height:30px;border:1px solid rgba(145,220,255,.25);background:rgba(3,12,21,.78);color:#dff5ff;border-radius:6px;cursor:pointer;font-size:1.15rem;line-height:1}.featured-nav-btn:disabled{opacity:.28;cursor:default}.featured-range{flex:1;min-width:120px;accent-color:#8bdcff;cursor:pointer}.recent-updates-heading-line{width:100%;height:1px;margin:9px 0 16px;background:linear-gradient(90deg,rgba(116,210,255,.08),rgba(116,210,255,.75) 50%,rgba(116,210,255,.08))}
+    .featured-add{display:none;margin:8px 0 0}.featured-nav{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .18s ease}.featured-carousel-wrap:hover .featured-nav{opacity:1}.featured-nav[hidden]{display:none}.featured-nav-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:48px;height:72px;border:1px solid rgba(145,220,255,.34);background:linear-gradient(90deg,rgba(2,10,18,.9),rgba(5,20,32,.7));color:#e9f9ff;border-radius:8px;cursor:pointer;font-size:2.15rem;line-height:1;pointer-events:auto;box-shadow:0 8px 26px rgba(0,0,0,.42);transition:opacity .16s ease,transform .16s ease,border-color .16s ease}.featured-nav-btn:hover{border-color:rgba(145,220,255,.72);transform:translateY(-50%) scale(1.05)}.featured-nav-btn:disabled{opacity:0;pointer-events:none}.featured-nav-prev{left:8px}.featured-nav-next{right:8px}.recent-updates-section{width:min(96%,1680px);margin:38px auto 28px}.recent-updates-section h2{margin:0;text-align:center;color:#f1f5fb;font-size:1.05rem;letter-spacing:.16em;font-weight:800;text-transform:uppercase}.recent-updates-heading-line{width:100%;height:1px;margin:10px 0 16px;background:linear-gradient(90deg,rgba(116,210,255,.08),rgba(116,210,255,.75) 50%,rgba(116,210,255,.08))}
     .featured-editor-backdrop{position:fixed;z-index:10050;inset:0;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:20px}.featured-editor{width:min(620px,96vw);background:#07111c;border:1px solid rgba(111,205,255,.3);padding:22px;box-shadow:0 24px 80px #000}.featured-editor h2{margin:0 0 18px;color:#fff}.featured-editor label{display:block;color:#a9d9ef;margin:12px 0 5px}.featured-editor input[type=text],.featured-editor textarea{box-sizing:border-box;width:100%;background:#020811;border:1px solid #24465b;color:#fff;padding:10px}.featured-editor textarea{min-height:95px;resize:vertical}.featured-editor .range-row{display:grid;grid-template-columns:1fr 85px;gap:12px;align-items:center}.featured-editor-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.featured-editor-actions button{padding:9px 14px;cursor:pointer}.featured-empty{width:100%;padding:34px;border:1px dashed rgba(130,210,255,.25);color:#8ba9b9;text-align:center}
-    @media(max-width:720px){.featured-section{width:94%}.featured-card{flex-basis:92%!important;height:min(var(--fh,330px),290px)}.featured-copy{max-width:82%}.featured-nav{width:96%;gap:5px}.featured-nav-btn{width:31px}.featured-range{min-width:80px}}
+    @media(max-width:720px){.featured-section{width:94%}.featured-card{flex-basis:92%!important;height:min(var(--fh,330px),290px)}.featured-copy{max-width:82%}.featured-nav-btn{width:42px;height:62px;font-size:1.9rem}.featured-nav-prev{left:5px}.featured-nav-next{right:5px}}
   `;
   document.head.appendChild(STYLE);
 
@@ -6681,13 +6678,11 @@ window.minchPreloadImage = minchPreloadImage;
   function updateNavigation(){
     const max=maxScroll(), overflow=max>2;
     nav.hidden=!overflow;
-    if(!overflow){root.scrollLeft=0;range.value='0';return}
-    const ratio=max?Math.max(0,Math.min(1,root.scrollLeft/max)):0;
-    range.value=String(Math.round(ratio*1000));
-    first.disabled=prev.disabled=root.scrollLeft<=2;
-    last.disabled=next.disabled=root.scrollLeft>=max-2;
+    if(!overflow){root.scrollLeft=0;return}
+    prev.disabled=root.scrollLeft<=2;
+    next.disabled=root.scrollLeft>=max-2;
   }
-  function resetFeatured(){root.scrollTo({left:0,behavior:'auto'});range.value='0';requestAnimationFrame(updateNavigation)}
+  function resetFeatured(){root.scrollTo({left:0,behavior:'auto'});requestAnimationFrame(updateNavigation)}
   function openEditor(item){
     if(!window.isAdminMode)return;const original=item||null;const x=clean(item||{title:'Nouvelle actualité',width:78,height:330});
     const o=document.createElement('div');o.className='featured-editor-backdrop';o.innerHTML=`<div class="featured-editor"><h2>${original?'Modifier':'Ajouter'} — À la une</h2><label>Titre</label><input data-f-title type="text" value="${esc(x.title)}"><label>Texte</label><textarea data-f-text>${esc(x.text)}</textarea><label>Image de fond</label><input data-f-image type="file" accept="image/*"><div class="range-row"><div><label>Largeur de la carte</label><input data-f-width type="range" min="35" max="100" value="${x.width}"></div><output data-f-width-out>${x.width} %</output></div><div class="range-row"><div><label>Hauteur de la carte</label><input data-f-height type="range" min="180" max="620" step="10" value="${x.height}"></div><output data-f-height-out>${x.height} px</output></div><div class="featured-editor-actions"><button type="button" data-f-cancel>Annuler</button><button type="button" data-f-save>Sauvegarder</button></div></div>`;document.body.appendChild(o);
@@ -6697,8 +6692,7 @@ window.minchPreloadImage = minchPreloadImage;
   }
   addBtn.onclick=()=>openEditor(null);root.addEventListener('click',e=>{const card=e.target.closest('.featured-card');if(!card)return;const x=items.find(v=>v.id===card.dataset.featuredId);if(e.target.closest('[data-featured-edit]'))openEditor(x);if(e.target.closest('[data-featured-delete]')&&window.isAdminMode&&confirm('Supprimer cette actualité ?')){items=items.filter(v=>v.id!==x.id);save()}});
   function step(dir){const card=root.querySelector('.featured-card');root.scrollBy({left:dir*((card?.getBoundingClientRect().width||root.clientWidth)+18),behavior:'smooth'})}
-  first.onclick=()=>root.scrollTo({left:0,behavior:'smooth'});prev.onclick=()=>step(-1);next.onclick=()=>step(1);last.onclick=()=>root.scrollTo({left:maxScroll(),behavior:'smooth'});
-  range.addEventListener('input',()=>{root.scrollLeft=maxScroll()*(Number(range.value)/1000);updateNavigation()});
+  prev.onclick=()=>step(-1);next.onclick=()=>step(1);
   root.addEventListener('scroll',updateNavigation,{passive:true});window.addEventListener('resize',updateNavigation);
   let down=false,startX=0,startScroll=0,moved=false;root.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;down=true;moved=false;startX=e.clientX;startScroll=root.scrollLeft;root.classList.add('dragging');root.setPointerCapture?.(e.pointerId)});root.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-startX;if(Math.abs(dx)>4)moved=true;root.scrollLeft=startScroll-dx});const stop=()=>{down=false;root.classList.remove('dragging');updateNavigation()};root.addEventListener('pointerup',stop);root.addEventListener('pointercancel',stop);
   const mainHub=document.getElementById('mainHub');let homeWasVisible=mainHub?!mainHub.classList.contains('is-hidden'):true;if(mainHub){new MutationObserver(()=>{const visible=!mainHub.classList.contains('is-hidden');if(visible&&!homeWasVisible)resetFeatured();homeWasVisible=visible}).observe(mainHub,{attributes:true,attributeFilter:['class']})}
