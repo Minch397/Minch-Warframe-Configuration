@@ -5377,7 +5377,7 @@ window.minchPreloadImage = minchPreloadImage;
   const EIDOLON_DAY_MS=100*60*1000;
   const EIDOLON_NIGHT_MS=50*60*1000;
   const EIDOLON_CYCLE_MS=EIDOLON_DAY_MS+EIDOLON_NIGHT_MS;
-  const EIDOLON_DAY_ANCHOR_UTC=Date.parse("2026-10-14T18:14:17Z"); // V75 : début du jour / fin de nuit estimé à 20:14:17 (France), d’après 16 min 30 restantes vers 19:57:47
+  const EIDOLON_DAY_ANCHOR_UTC=Date.parse("2026-10-14T18:13:54Z"); // V76 : fin de nuit avancee de 23 secondes. Horloge absolue UTC, aucun decalage lie au chargement.
   function getLocalEidolonState(now=Date.now()){
     const pos=((now-EIDOLON_DAY_ANCHOR_UTC)%EIDOLON_CYCLE_MS+EIDOLON_CYCLE_MS)%EIDOLON_CYCLE_MS;
     const night=pos>=EIDOLON_DAY_MS;
