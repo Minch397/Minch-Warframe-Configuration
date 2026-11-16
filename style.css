@@ -4075,3 +4075,124 @@ body.build-open .buildpage::-webkit-scrollbar-track,
     scroll-behavior: auto !important;
   }
 }
+
+
+/* ================================================================
+   V78 — Direction artistique Warframe / surfaces, lumière, profondeur
+   Couche exclusivement visuelle : aucun changement DOM ou logique.
+   ================================================================ */
+:root {
+  --v78-ice: #8fe5ff;
+  --v78-blue: #38bdf8;
+  --v78-violet: #9f8dff;
+  --v78-line: rgba(143,229,255,.21);
+  --v78-surface: linear-gradient(145deg,rgba(11,23,41,.90),rgba(15,13,34,.88));
+  --v78-shadow: 0 18px 44px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.055);
+}
+body {
+  background-color:#050912;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+.screen-overlay {
+  background:linear-gradient(180deg,rgba(3,8,21,.18),rgba(2,7,17,.3) 55%,rgba(2,5,14,.47)),
+    radial-gradient(ellipse at 50% 12%,rgba(45,112,172,.085),transparent 65%);
+}
+.hub-header h1,.hub-section-head h1,header h1 {
+  letter-spacing:.045em;
+  font-weight:800;
+  text-wrap:balance;
+  text-shadow:0 2px 24px rgba(56,189,248,.24),0 6px 30px rgba(0,0,0,.45);
+}
+.hub-section-head h1::after,.hub-header h1::after {
+  content:"";display:block;width:clamp(72px,14vw,170px);height:2px;
+  margin:15px auto 0;border-radius:10px;
+  background:linear-gradient(90deg,transparent,var(--v78-ice),var(--v78-violet),transparent);
+  box-shadow:0 0 18px rgba(56,189,248,.42);
+}
+.hub-header p,.hub-section-head p {
+  color:rgba(225,238,252,.77);
+  line-height:1.6;
+}
+.hub-grid {gap:clamp(16px,2.4vw,28px)}
+.hub-card,.guide-card,.tier-card,.recent-update-card,
+.weekly-task,.global-search-wrap,.tier-intro-panel {
+  border-color:var(--v78-line);
+  background:var(--v78-surface);
+  box-shadow:var(--v78-shadow);
+}
+.hub-card {
+  isolation:isolate;
+  border-radius:25px;
+  background:linear-gradient(135deg,rgba(13,31,54,.94),rgba(19,14,43,.9));
+}
+.hub-card::after {
+  content:"";position:absolute;inset:0;pointer-events:none;
+  border-radius:inherit;
+  background:linear-gradient(125deg,rgba(255,255,255,.085),transparent 38%,transparent 68%,rgba(143,229,255,.04));
+  opacity:.72;transition:opacity .28s ease;
+}
+.hub-card:hover::after {opacity:1}
+.hub-card:hover,.guide-card:hover,.tier-card:hover,.recent-update-card:hover {
+  border-color:rgba(143,229,255,.53);
+  box-shadow:0 22px 54px rgba(0,0,0,.39),0 0 25px rgba(56,189,248,.12),inset 0 1px rgba(255,255,255,.09);
+}
+.hub-card-title {letter-spacing:.018em;text-shadow:0 2px 14px rgba(0,0,0,.38)}
+.hub-card-text {color:rgba(228,238,252,.78)}
+.card {
+  position:relative;
+  border-radius:18px;
+  border-color:rgba(143,229,255,.19);
+  background:linear-gradient(155deg,rgba(13,27,46,.93),rgba(12,12,29,.91));
+  box-shadow:0 12px 32px rgba(0,0,0,.33),inset 0 1px rgba(255,255,255,.045);
+}
+.card:hover {
+  transform:translateY(-5px) scale(1.015);
+  border-color:rgba(143,229,255,.57);
+  box-shadow:0 20px 45px rgba(0,0,0,.45),0 0 28px rgba(56,189,248,.18),0 0 30px rgba(159,141,255,.09);
+}
+.card img {transform-origin:center 38%}
+.card:hover img {filter:brightness(1.06) saturate(1.08)}
+.card p {letter-spacing:.012em;text-shadow:0 2px 9px rgba(0,0,0,.65)}
+.global-search-wrap {
+  border-radius:20px;
+  box-shadow:0 15px 38px rgba(0,0,0,.33),0 0 26px rgba(56,189,248,.09);
+}
+.global-search-wrap:focus-within {
+  border-color:rgba(143,229,255,.66);
+  box-shadow:0 18px 44px rgba(0,0,0,.35),0 0 0 3px rgba(56,189,248,.10),0 0 28px rgba(56,189,248,.15);
+}
+.hub-back,.back {
+  border:1px solid rgba(143,229,255,.3);
+  background:linear-gradient(145deg,rgba(13,30,50,.96),rgba(14,14,33,.95));
+  box-shadow:0 12px 30px rgba(0,0,0,.3),0 0 20px rgba(56,189,248,.1);
+}
+.hub-back:hover,.back:hover {
+  border-color:rgba(143,229,255,.65);
+  box-shadow:0 12px 30px rgba(0,0,0,.35),0 0 24px rgba(56,189,248,.22);
+}
+.hub-footer {
+  background:linear-gradient(180deg,rgba(7,15,28,.98),rgba(5,9,20,.99));
+  border-top-color:rgba(143,229,255,.18);
+}
+.hub-footer-column h3 {color:#d9f6ff;letter-spacing:.035em}
+.build-content h2,.build-content h3,.build-content h4 {
+  text-shadow:0 2px 20px rgba(56,189,248,.16);
+}
+@media (prefers-reduced-motion: no-preference) and (hover:hover) {
+  .hub-card,.guide-card,.tier-card,.recent-update-card,.hub-back,.back {
+    transition:transform .24s cubic-bezier(.2,.75,.25,1),border-color .24s ease,box-shadow .24s ease,background-color .24s ease;
+  }
+  .hub-card:hover {transform:translateY(-6px)}
+  .guide-card:hover,.tier-card:hover {transform:translateY(-3px)}
+}
+@media (max-width:640px) {
+  .hub-header h1,.hub-section-head h1 {letter-spacing:.012em}
+  .hub-card {border-radius:20px}
+  .card {border-radius:14px}
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-card,.hub-card::after,.guide-card,.tier-card,.recent-update-card,.hub-back,.back {
+    animation:none!important;transition:none!important;
+  }
+}
