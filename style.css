@@ -4029,3 +4029,49 @@ body.build-open .buildpage::-webkit-scrollbar-track,
   pointer-events:none !important;
 }
 .screen-overlay, body::before{ pointer-events:none !important; }
+
+
+/* V77 — Polish visuel progressif, sans modification de la logique du site.
+   Animations limitées aux interactions, avec respect des préférences système. */
+@media (prefers-reduced-motion: no-preference) {
+  .card {
+    transition: transform .24s cubic-bezier(.2,.75,.25,1),
+                box-shadow .24s ease, border-color .24s ease,
+                background-color .24s ease;
+  }
+  .card:hover {
+    transition-duration: .19s;
+  }
+  .card img {
+    transition: transform .34s cubic-bezier(.2,.75,.25,1),
+                filter .28s ease;
+  }
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled) {
+    transition: background-color .2s ease, border-color .2s ease,
+                box-shadow .2s ease, color .2s ease, transform .2s ease;
+  }
+  button:not(:disabled):active {
+    transform: scale(.985);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .card:focus-within {
+    border-color: rgba(125,211,252,.38);
+    box-shadow: 0 10px 32px rgba(0,0,0,.28), 0 0 0 1px rgba(125,211,252,.1);
+  }
+}
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid rgba(125,211,252,.92);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .card img, button, a, input, select, textarea {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
